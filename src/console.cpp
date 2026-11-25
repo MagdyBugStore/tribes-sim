@@ -6,6 +6,7 @@
 #include <sstream>
 #include <thread>
 
+#include "http_server.hpp"
 #include "world.hpp"
 
 namespace tribes {
@@ -32,7 +33,8 @@ static const char* HELP =
     "  speed <sec>       set tick interval in seconds\n"
     "  quit              stop and print the end report";
 
-void run_console(World& w, int max_days) {
+void run_console(World& w, int max_days, int serve_port,
+                 const std::string& web_root) {
     std::thread sim([&]() {
         while (!w.stop.load()) {
             if (!w.paused.load()) {
@@ -53,11 +55,31 @@ void run_console(World& w, int max_days) {
         }
     });
 
+    HttpServer server(w, serve_port, web_root);
+    if (serve_port > 0) {
+        std::string err;
+        if (!server.start(&err)) {
+            std::cerr << "cannot serve on 127.0.0.1:" << serve_port << ": "
+                      << err << "\n";
+            w.stop.store(true);
+            sim.join();
+            return;
+        }
+        std::cout << "Serving the live valley on http://127.0.0.1:" << serve_port
+                  << "/ (static files from " << web_root << "/)" << std::endl;
+    }
     std::cout << HELP << std::endl;
     std::string line;
     while (!w.stop.load()) {
         std::cout << "\n> " << std::flush;
-        if (!std::getline(std::cin, line)) break;
+        if (!std::getline(std::cin, line)) {
+            // No console (stdin closed): when serving, keep running until
+            // the simulation ends; otherwise quit as before.
+            if (serve_port > 0)
+                while (!w.stop.load())
+                    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            break;
+        }
         std::istringstream in(line);
         std::string cmd;
         in >> cmd;
@@ -123,6 +145,7 @@ void run_console(World& w, int max_days) {
         }
     }
     w.stop.store(true);
+    server.stop();
     sim.join();
 }
 

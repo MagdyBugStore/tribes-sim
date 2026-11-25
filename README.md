@@ -28,6 +28,32 @@ per-1000-people values), `--days N`, `--seed N` (mt19937_64; the same seed
 reproduces a run bit-for-bit), `--headless`, `--tick-interval S`,
 `--csv FILE`.
 
+Live HTTP API (read-only snapshots, same origin, 127.0.0.1 only):
+
+```sh
+./tribes --serve 8080 --people 1000 --days 0     # --days 0 = run until quit
+curl -s localhost:8080/api/state
+```
+
+`--serve PORT` starts a one-thread blocking HTTP server beside the simulation
+(`--web DIR` sets the static folder, default `web/`; `--days 0` means no day
+limit). The console still works; with no console (stdin closed) the run
+continues until the simulation ends. Endpoints (JSON, UTF-8, no CORS headers):
+
+| endpoint | returns |
+|---|---|
+| `GET /api/state` | day, season, seconds per day, paused flag, population, births, deaths, money supply, Gini, tribes |
+| `GET /api/people?since=<day>` | living people as `{fields:[...], rows:[[...]]}`; `since` keeps people born on or after that day |
+| `GET /api/person/<id>` | full detail, family, last 60 history lines |
+| `GET /api/market`, `/api/herds`, `/api/caravans`, `/api/map` | shop prices per good, herd counts per tribe, caravan states, settlements and their zones |
+| `POST /api/control` | `{"action":"pause"}`, `{"action":"resume"}`, `{"action":"speed","value":seconds}` |
+| `GET /` and `/<file>` | static files from `web/` (`..` and escapes get 403/404) |
+
+`activity` and `zone` per person are `null` until the activity layer (issue 4)
+exists. Requests are checked for a loopback `Host` and a same-origin `Origin`.
+`src/snapshot.cpp` copies the world under `World::lock` (about 0.8 ms for
+3,000 people) and builds all JSON outside the lock.
+
 Console commands while running: `person <id>`, `family <id>`,
 `status`, `history <id>`, `world`, `top`, `economy`, `tribes`, `market`,
 `trade <good>`, `chain <good>`, `pause`, `resume`, `speed <s>`, `quit`.
@@ -46,6 +72,7 @@ Console commands while running: `person <id>`, `family <id>`,
 | `src/money.cpp` | `transfer()` - the ONLY way money ever moves |
 | `src/stock.cpp` | `move_stock()` plus named `stock_create()`/`stock_destroy()` - the ONLY ways goods ever move or change |
 | `src/report.cpp`, `src/console.cpp` | reports and the interactive console |
+| `src/snapshot.cpp`, `src/http_server.cpp` | lock-short world snapshot + JSON, and the local HTTP server |
 | `data/resources.csv` | every good: price, floor/ceiling, starting stock and its distribution, consumption rates, caravan flows, and a one-line reason for the number |
 | `data/recipes.csv` | every production chain stage |
 | `data/roles.csv` | every trade: sector, payer, wage, founding share |

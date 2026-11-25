@@ -7,7 +7,8 @@
 
 namespace tribes {
 std::mt19937_64 RNG;  // the one source of randomness, seeded by --seed
-void run_console(World& w, int max_days);
+void run_console(World& w, int max_days, int serve_port,
+                 const std::string& web_root);
 }  // namespace tribes
 
 using namespace tribes;
@@ -17,7 +18,8 @@ int main(int argc, char** argv) {
     uint64_t seed = 42;
     double interval = 1.0;
     bool headless = false;
-    std::string csv, data_dir = "data";
+    int serve_port = 0;
+    std::string csv, data_dir = "data", web_root = "web";
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         auto next = [&]() { return i + 1 < argc ? argv[++i] : ""; };
@@ -28,6 +30,8 @@ int main(int argc, char** argv) {
         else if (a == "--headless") headless = true;
         else if (a == "--csv") csv = next();
         else if (a == "--data") data_dir = next();
+        else if (a == "--serve") serve_port = std::atoi(next());
+        else if (a == "--web") web_root = next();
     }
     Data data;
     try {
@@ -88,7 +92,7 @@ int main(int argc, char** argv) {
             }
         }
     } else {
-        run_console(w, days);
+        run_console(w, days, serve_port, web_root);
     }
     std::cout << w.end_report() << "\n";
     return 0;

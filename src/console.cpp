@@ -6,6 +6,7 @@
 #include <sstream>
 #include <thread>
 
+#include "activity.hpp"
 #include "http_server.hpp"
 #include "world.hpp"
 
@@ -29,6 +30,8 @@ static const char* HELP =
     "  market            stock, price and price change per good\n"
     "  trade             caravans (past and next), trade balance, top goods\n"
     "  chain <good>      the production chain of a good, stage by stage\n"
+    "  schedule <id> [day]  one person's day, 24 hourly lines (zone, activity)\n"
+    "  activity [hour]   people per activity at an hour (default 12)\n"
     "  pause / resume    pause or resume the simulation\n"
     "  speed <sec>       set tick interval in seconds\n"
     "  quit              stop and print the end report";
@@ -121,6 +124,15 @@ void run_console(World& w, int max_days, int serve_port,
                 std::string good;
                 in >> good;
                 std::cout << w.describe_chain(good) << "\n";
+            } else if (cmd == "schedule") {
+                int id, day = w.tick;
+                in >> id;
+                if (in >> day) {}
+                std::cout << describe_schedule(w, id, day) << "\n";
+            } else if (cmd == "activity") {
+                int hour = 12;
+                if (in >> hour) {}
+                std::cout << describe_activity_counts(w, hour) << "\n";
             } else if (cmd == "pause") {
                 w.paused.store(true);
                 std::cout << "Paused.\n";

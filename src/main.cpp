@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "activity.hpp"
 #include "world.hpp"
 
 namespace tribes {
@@ -18,7 +19,8 @@ int main(int argc, char** argv) {
     uint64_t seed = 42;
     double interval = 1.0;
     bool headless = false;
-    int serve_port = 0;
+    int serve_port = 0, schedule_id = -1;
+    bool role_table = false;
     std::string csv, data_dir = "data", web_root = "web";
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
@@ -32,6 +34,8 @@ int main(int argc, char** argv) {
         else if (a == "--data") data_dir = next();
         else if (a == "--serve") serve_port = std::atoi(next());
         else if (a == "--web") web_root = next();
+        else if (a == "--schedule") schedule_id = std::atoi(next());
+        else if (a == "--role-table") role_table = true;
     }
     Data data;
     try {
@@ -41,6 +45,11 @@ int main(int argc, char** argv) {
         return 1;
     }
     World w(people, seed, interval, data);
+    if (role_table) { std::cout << role_activity_table(w); return 0; }
+    if (schedule_id >= 0) {
+        std::cout << describe_schedule(w, schedule_id, w.tick) << "\n";
+        return 0;
+    }
 
     std::cout << "Valley founded: " << people << " people in "
               << w.tribe_names.size() << " tribes, " << w.shops.size()

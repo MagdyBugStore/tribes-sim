@@ -54,8 +54,17 @@ exists. Requests are checked for a loopback `Host` and a same-origin `Origin`.
 `src/snapshot.cpp` copies the world under `World::lock` (about 0.8 ms for
 3,000 people) and builds all JSON outside the lock.
 
+Activity layer (`src/activity.cpp`): `schedule_for(world, person, day)` derives
+24 hourly slots (zone, machine name, English and Arabic label) from role, age,
+gender, season, needs, sickness, pregnancy and caravan days. It is read-only,
+never touches the simulation RNG (variations hash person id, day and hour) and
+leaves the state hash unchanged. Day 0 is a Sunday (Friday is `day % 7 == 5`);
+needs and caravans apply only to the current day. `./tribes --schedule <id>`
+prints one person's day; `./tribes --role-table` prints the role-by-activity
+table.
+
 Console commands while running: `person <id>`, `family <id>`,
-`status`, `history <id>`, `world`, `top`, `economy`, `tribes`, `market`,
+`status`, `history <id>`, `schedule <id> [day]`, `activity [hour]`, `world`, `top`, `economy`, `tribes`, `market`,
 `trade <good>`, `chain <good>`, `pause`, `resume`, `speed <s>`, `quit`.
 
 ## How it is organized
@@ -72,6 +81,7 @@ Console commands while running: `person <id>`, `family <id>`,
 | `src/money.cpp` | `transfer()` - the ONLY way money ever moves |
 | `src/stock.cpp` | `move_stock()` plus named `stock_create()`/`stock_destroy()` - the ONLY ways goods ever move or change |
 | `src/report.cpp`, `src/console.cpp` | reports and the interactive console |
+| `src/activity.cpp` | the hourly schedule of every person, derived read-only |
 | `src/snapshot.cpp`, `src/http_server.cpp` | lock-short world snapshot + JSON, and the local HTTP server |
 | `data/resources.csv` | every good: price, floor/ceiling, starting stock and its distribution, consumption rates, caravan flows, and a one-line reason for the number |
 | `data/recipes.csv` | every production chain stage |

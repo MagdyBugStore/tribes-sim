@@ -22,12 +22,11 @@ export const SOURCES = {}; // filled below: name -> {src, lic}
 const PROC = { src: 'procedural (three.js geometry + generated textures)', lic: 'project code / CC0-style generated textures' };
 
 export function tent(v = 0) { // goat-hair tent, sizes 0..2
-  const w = [3, 4.5, 6][v % 3], d = w * 0.8, h = w * 0.55;
-  const hair = mat('hair', 'goat_hair', 2);
-  const roof = new THREE.Mesh(new THREE.CylinderGeometry(0.1, d * 0.75, h, 4, 1, true), hair);
-  roof.rotation.y = Math.PI / 4; roof.scale.set(w / d, 1, 1); roof.position.y = h / 2;
-  hair.side = THREE.DoubleSide;
-  return G(roof, box(w * 0.5, 0.1, d * 0.5, mat('rug', 'rug', 1), 0, 0, 0), cyl(0.05, 0.05, h + 0.4, mat('wood', 'wood_planks'), 0, 0, 0, 6));
+  const w = [3, 4.5, 6][v % 3], d = w * 0.8, h = w * 0.5;
+  const hair = mat('hair', 'goat_hair', 1);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(d * 0.7, h, 8), hair);
+  roof.scale.set(w / d, 1, 1); roof.position.y = h / 2;
+  return G(roof, box(w * 0.4, 0.1, d * 0.4, mat('rug', 'rug', 1), 0, 0, d * 0.45));
 }
 export function house(v = 0) { // mud-brick flat-roof house
   const m = mat('mb', 'mudbrick', 2), w = [4, 5, 6][v % 3], d = [4, 4.5, 5][v % 3], h = 2.6 + (v % 2) * 0.6;

@@ -1,4 +1,5 @@
 // http_server.cpp: see http_server.hpp.
+#include "dashboard.hpp"
 #include "http_server.hpp"
 
 #include <arpa/inet.h>
@@ -214,6 +215,12 @@ HttpResponse handle_request(World& w, const HttpRequest& req,
         PersonDetail d = take_person(w, static_cast<int>(id));
         if (!d.found) return json_error(404, "no such person");
         r.body = json_person(d);
+    } else if (path == "/api/dash") {
+        int since = -1, car = 0, ev = 0;
+        query_int(query, "since", &since);
+        query_int(query, "car", &car);
+        query_int(query, "ev", &ev);
+        r.body = dashboard().json(since, static_cast<size_t>(std::max(0, car)), static_cast<size_t>(std::max(0, ev)));
     } else if (path == "/api/market") {
         r.body = json_market(take_snapshot(w));
     } else if (path == "/api/herds") {

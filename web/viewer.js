@@ -630,6 +630,7 @@ function frame(t) {
   followStep();
   drawPeople(h);
   drawSelected();
+  if (window.onFrame) window.onFrame(h);
   drawClock(h);
   fpsFrames++;
   if (t - fpsAt > 2000) { fps = Math.round(fpsFrames * 1000 / (t - fpsAt)); fpsFrames = 0; fpsAt = t; }

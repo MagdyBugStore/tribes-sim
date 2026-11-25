@@ -46,6 +46,7 @@ continues until the simulation ends. Endpoints (JSON, UTF-8, no CORS headers):
 | `GET /api/people?since=<day>` | living people as `{fields:[...], rows:[[...]]}`; `since` keeps people born on or after that day |
 | `GET /api/person/<id>` | full detail, family (with names), last 60 history lines, today's 24 slots with a one-line reason each (`today`: name, English, Arabic, zone, zone English, zone Arabic, reason), current `activity`/`zone`/`hour`, goods and animals owned (`goods`) |
 | `GET /api/schedules?day=<d>` | every living person's 24 hourly slots with map positions for one day (about 280 KB for 3,000 people, built once per day and cached; `/api/people` carries no positions) |
+| `GET /api/dash?since=<day>&car=<seq>&ev=<seq>` | rolling history for the dashboards: one row per day for the last 365 days (population, money split, Gini, hungry/thirsty/sick, births, deaths, wells, caravans, every item's average price, shop stock and daily use, herd totals per animal and per tribe, births and slaughters), the caravan visit log and the event log. Only rows newer than the given day and sequence numbers are returned. Recorded once per day under the world lock, served without it (`src/dashboard.cpp`) |
 | `GET /api/market`, `/api/herds`, `/api/caravans`, `/api/map` | shop prices per good, herd counts per tribe, caravan states, settlements and their zones |
 | `POST /api/control` | `{"action":"pause"}`, `{"action":"resume"}`, `{"action":"speed","value":seconds}` |
 | `GET /` and `/<file>` | static files from `web/` (`..` and escapes get 403/404) |
@@ -86,6 +87,8 @@ The viewer polls `/api/state` every 0.5 s, `/api/people` every 2 s and
 `/api/schedules` once per day. `?hour=H` freezes the clock at hour H (used
 for the screenshots in `docs/viewer-*.png`). Click a person (or use the search box, by name or id) to open the side panel: header, what they do now and why (English and Arabic, right-to-left), need bars, money and goods, a 24-hour strip with the current hour marked, family links that switch the panel, the last 60 history lines and a Follow button (`?select=ID&follow=1` opens it from the URL). Tested in headless Chrome only;
 Firefox was not available.
+
+Dashboards (button "Dashboards", top-left of the map): Economy (money supply and where it sits: pouches, Bayt al-Mal, shop tills, caravan purses, Majlis and mint; Gini; hungry, thirsty and sick; births and deaths per week; the header line uses the same wording and numbers as the console `world` command), Market (price, percent of base price, 7-day trend arrow, shop stock and days of stock left at the last 7 days' use; under 7 days is highlighted; click an item for its 90-day price chart), Herds (per animal and per tribe, born and slaughtered in 30 days, click for the head-count chart), Caravans (the log of visits, and the caravan in the valley is drawn walking the road with a label) and Alerts (also a ticker above the map: caravans, wells, Eid, weddings, notable deaths, famine risk when over 5% of people went hungry, Jumu'ah). The server keeps the history, so a page reload gets the last 365 days back. Charts redraw once per simulated day, tables update cell by cell.
 
 Console commands while running: `person <id>`, `family <id>`,
 `status`, `history <id>`, `schedule <id> [day]`, `activity [hour]`, `world`, `top`, `economy`, `tribes`, `market`,

@@ -63,6 +63,17 @@ needs and caravans apply only to the current day. `./tribes --schedule <id>`
 prints one person's day; `./tribes --role-table` prints the role-by-activity
 table.
 
+Valley map (`src/map.cpp`): a read-only, deterministic 2000 x 1400 layout from
+the seed (own hash generator, never the simulation RNG): wadi floor, rocky
+hills, dunes, the suq with mosque, majlis, workshops and shops, one settlement
+per tribe with a home slot per household, wells, fields, groves, pastures,
+salt pans, gates, and the caravan road east to west. Counts match the
+simulation, objects never overlap, and a newly dug well appears without
+moving anything else. `position_of(world, map, person, zone)` gives a stable
+spot (own home, own field, tribe well...). `GET /api/map` returns the layout
+once (cached). `./tribes --print-map FILE.svg` draws it; see
+`docs/valley-map.svg` (1,000 people, seed 42).
+
 Console commands while running: `person <id>`, `family <id>`,
 `status`, `history <id>`, `schedule <id> [day]`, `activity [hour]`, `world`, `top`, `economy`, `tribes`, `market`,
 `trade <good>`, `chain <good>`, `pause`, `resume`, `speed <s>`, `quit`.
@@ -81,6 +92,7 @@ Console commands while running: `person <id>`, `family <id>`,
 | `src/money.cpp` | `transfer()` - the ONLY way money ever moves |
 | `src/stock.cpp` | `move_stock()` plus named `stock_create()`/`stock_destroy()` - the ONLY ways goods ever move or change |
 | `src/report.cpp`, `src/console.cpp` | reports and the interactive console |
+| `src/map.cpp` | the 2D valley layout and `position_of()` |
 | `src/activity.cpp` | the hourly schedule of every person, derived read-only |
 | `src/snapshot.cpp`, `src/http_server.cpp` | lock-short world snapshot + JSON, and the local HTTP server |
 | `data/resources.csv` | every good: price, floor/ceiling, starting stock and its distribution, consumption rates, caravan flows, and a one-line reason for the number |

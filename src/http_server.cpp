@@ -15,6 +15,7 @@
 #include <fstream>
 #include <sstream>
 
+#include "map.hpp"
 #include "snapshot.hpp"
 
 namespace tribes {
@@ -219,7 +220,18 @@ HttpResponse handle_request(World& w, const HttpRequest& req,
     } else if (path == "/api/caravans") {
         r.body = json_caravans(take_snapshot(w));
     } else if (path == "/api/map") {
-        r.body = json_map(take_snapshot(w));
+        // The layout is built once and cached; it is rebuilt only when the
+        // simulation digs a new well (the server runs on one thread).
+        static std::string cached;
+        static size_t cached_wells = static_cast<size_t>(-1);
+        static uint64_t cached_seed = 0;
+        MapInputs in = take_map_inputs(w);
+        if (cached.empty() || cached_wells != in.well_tribes.size() || cached_seed != in.seed) {
+            cached = json_valley_map(build_map(in));
+            cached_wells = in.well_tribes.size();
+            cached_seed = in.seed;
+        }
+        r.body = cached;
     } else if (path.compare(0, 5, "/api/") == 0) {
         return json_error(404, "not found");
     } else {

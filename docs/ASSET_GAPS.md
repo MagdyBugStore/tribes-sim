@@ -15,3 +15,6 @@ To be filled by procedural models or generated textures in the next issues (3D-3
 - No clip blending between states. Normals use the bind pose (not animated).
 - Role looks are tint (role group) plus size (child 0.62, elder 0.94). No outfit meshes.
 - Animal counts are not yet read from `/api/herds`; positions are not driven by the real schedules.
+
+## World scene (issue #16)
+`web3d/world.html` is a first pass: static placement from `/api/map` plus one dot per person from the current `/api/people` frame. Missing: people walking schedules over 24h, caravans/camels, events, new wells/fields animation, terrain bands, build animation, tent look (tribe 1 homes render as a messy cluster).

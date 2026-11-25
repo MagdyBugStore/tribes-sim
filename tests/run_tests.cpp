@@ -14,6 +14,8 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <memory>
 #include <map>
 #include <set>
 #include <string>
@@ -22,6 +24,8 @@
 #include "data.hpp"
 #include "money.hpp"
 #include "person.hpp"
+#include "http_server.hpp"
+#include "snapshot.hpp"
 #include "stock.hpp"
 #include "world.hpp"
 
@@ -53,6 +57,73 @@ static bool bad_word(const std::string& s) {
            t.find("plunder") != std::string::npos ||
            t.find("loot") != std::string::npos;
 }
+
+// A small strict JSON validator (recursive descent) for the snapshot tests.
+struct JsonCheck {
+    const std::string& s;
+    size_t i = 0;
+    explicit JsonCheck(const std::string& str) : s(str) {}
+    void ws() { while (i < s.size() && std::isspace((unsigned char)s[i])) ++i; }
+    bool lit(const char* w) {
+        size_t n = std::strlen(w);
+        if (s.compare(i, n, w) != 0) return false;
+        i += n;
+        return true;
+    }
+    bool str() {
+        if (i >= s.size() || s[i] != '"') return false;
+        for (++i; i < s.size(); ++i) {
+            if (s[i] == '\\') { ++i; continue; }
+            if (s[i] == '"') { ++i; return true; }
+            if ((unsigned char)s[i] < 0x20) return false;
+        }
+        return false;
+    }
+    bool num() {
+        size_t st = i;
+        if (i < s.size() && s[i] == '-') ++i;
+        while (i < s.size() && (std::isdigit((unsigned char)s[i]) || s[i] == '.' ||
+                                s[i] == 'e' || s[i] == 'E' || s[i] == '+' || s[i] == '-')) ++i;
+        return i > st;
+    }
+    bool val() {
+        ws();
+        if (i >= s.size()) return false;
+        char c = s[i];
+        if (c == '{') {
+            ++i; ws();
+            if (i < s.size() && s[i] == '}') { ++i; return true; }
+            for (;;) {
+                ws(); if (!str()) return false;
+                ws(); if (i >= s.size() || s[i++] != ':') return false;
+                if (!val()) return false;
+                ws(); if (i >= s.size()) return false;
+                if (s[i] == ',') { ++i; continue; }
+                if (s[i] == '}') { ++i; return true; }
+                return false;
+            }
+        }
+        if (c == '[') {
+            ++i; ws();
+            if (i < s.size() && s[i] == ']') { ++i; return true; }
+            for (;;) {
+                if (!val()) return false;
+                ws(); if (i >= s.size()) return false;
+                if (s[i] == ',') { ++i; continue; }
+                if (s[i] == ']') { ++i; return true; }
+                return false;
+            }
+        }
+        if (c == '"') return str();
+        if (c == 't') return lit("true");
+        if (c == 'f') return lit("false");
+        if (c == 'n') return lit("null");
+        return num();
+    }
+    bool valid() { bool ok = val(); ws(); return ok && i == s.size(); }
+};
+
+static bool json_ok(const std::string& s) { return JsonCheck(s).valid(); }
 
 int main() {
     Data data;
@@ -359,6 +430,78 @@ int main() {
         check(a.state_hash() == b.state_hash() &&
                   a.state_hash() != c.state_hash(),
               "determinism (state hash)", buf);
+    }
+
+    // -- T14: snapshot + API (issue 3): valid JSON, world untouched ----------------
+    {
+        World w(3000, 11, 1.0, data);
+        for (int d = 0; d < 20; ++d) w.step();
+        const uint64_t before = w.state_hash();
+        long long lock_us = 0;
+        Snapshot s = take_snapshot(w, &lock_us);
+        std::vector<std::pair<std::string, std::string>> docs = {
+            {"state", json_state(s)},
+            {"people", json_people(s, false, 0)},
+            {"people since", json_people(s, true, 10)},
+            {"market", json_market(s)},
+            {"herds", json_herds(s)},
+            {"caravans", json_caravans(s)},
+            {"map", json_map(s)},
+            {"person", json_person(take_person(w, 0))}};
+        bool all_valid = true;
+        std::string bad;
+        for (auto& d : docs)
+            if (!json_ok(d.second)) { all_valid = false; bad += d.first + " "; }
+        char buf[200];
+        std::snprintf(buf, sizeof buf, "%zu docs%s%s", docs.size(),
+                      bad.empty() ? "" : ", invalid: ", bad.c_str());
+        check(all_valid, "snapshot JSON is valid", buf);
+        const uint64_t after = w.state_hash();
+        std::snprintf(buf, sizeof buf, "hash %016llx -> %016llx",
+                      (unsigned long long)before, (unsigned long long)after);
+        check(before == after, "snapshot leaves world unchanged", buf);
+        const std::string people = json_people(s, false, 0);
+        std::snprintf(buf, sizeof buf, "%d people, %zu bytes (limit 409600), lock held %lld us",
+                      s.population, people.size(), lock_us);
+        check(people.size() < 400 * 1024 && s.population > 2500,
+              "3000-person payload under 400 KB", buf);
+        check(json_ok("{\"a\":[1,2,{\"b\":null}]}") && !json_ok("{\"a\":[1,2}") &&
+                  !json_ok("{\"a\" 1}"),
+              "validator sanity", "accepts good, rejects broken JSON");
+        // The sim keeps stepping identically after snapshots (determinism).
+        // (the RNG is global and re-seeded by each World constructor, so run
+        // one world to completion before building the next)
+        World a(300, 5, 1.0, data);
+        for (int d = 0; d < 30; ++d) a.step();
+        const uint64_t ha = a.state_hash();
+        World b(300, 5, 1.0, data);
+        for (int d = 0; d < 30; ++d) { b.step(); take_snapshot(b); }
+        const uint64_t hb = b.state_hash();
+        check(ha == hb, "snapshots do not perturb the run",
+              "30 days, with and without snapshots");
+    }
+
+    // -- T15: static file path safety --------------------------------------------------
+    {
+        std::string out;
+        const char* bad[] = {"/../src/main.cpp", "/%2e%2e/src/main.cpp",
+                             "/..%2fsrc/main.cpp", "/a/../../src/main.cpp",
+                             "/..\\src\\main.cpp", "/web/../../etc/passwd"};
+        bool refused = true;
+        for (const char* p : bad) {
+            int st = resolve_static("web", p, &out);
+            if (st != 403 && st != 404) refused = false;
+        }
+        check(refused, "path traversal refused", "6 traversal variants -> 403/404");
+        check(resolve_static("web", "/", &out) == 200, "web/index.html is served",
+              "GET / resolves under web/");
+        HttpRequest r;
+        r.method = "GET";
+        r.target = "/../src/main.cpp";
+        r.host = "localhost:8080";
+        HttpResponse resp = handle_request(*std::make_unique<World>(100, 1, 1.0, data), r, "web");
+        check(resp.status == 403 || resp.status == 404, "router refuses /../src/main.cpp",
+              "status " + std::to_string(resp.status));
     }
 
     std::printf("\n%s (%d failure%s)\n", failures == 0 ? "ALL TESTS PASSED" : "FAILURES",

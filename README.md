@@ -379,3 +379,9 @@ byte-identical output; a different seed produces a different history.
 ## Arabic viewer (RTL)
 
 The viewer in `web/` is fully Arabic with a right-to-left layout (`<html lang="ar" dir="rtl">`). `web/i18n.js` holds the dictionaries (tribes, names, roles, goods, units, seasons) and the phrase patterns that turn the server's English event and reason text into Arabic; unknown text falls back to the original. Activity and zone names come from the server's Arabic fields. Numbers stay in Western digits. The map canvas is not mirrored. Screenshots: `docs/viewer-ar-panel.png`, `docs/viewer-ar-market.png`.
+
+## 3D viewer (work in progress)
+
+`web3d/` holds the 3D stack decision (`docs/ADR-0001-3d-stack.md`). To open the hello page:
+`python3 -m http.server 8000 --directory web3d`, then http://localhost:8000/hello.html. The benchmark is
+`web3d/proto/three-bench.html?mode=instanced&n=1000`.

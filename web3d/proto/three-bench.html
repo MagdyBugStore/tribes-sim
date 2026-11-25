@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>three.js benchmark</title>
+<style>html,body{margin:0;background:#222;color:#eee;font:13px sans-serif}#hud{position:absolute;left:8px;top:8px}</style>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+</head><body><div id="hud"></div><script type="module">
+// Benchmark: N skinned characters (3 bones: root, 2 legs) + a 512x512 terrain.
+// ?mode=skinned  one SkinnedMesh per character, bones animated in JS (the baseline)
+// ?mode=instanced  one InstancedMesh, walk cycle done in the vertex shader (GPU)
+import * as THREE from 'three';
+const q = new URLSearchParams(location.search);
+const N = parseInt(q.get('n') || '1000', 10), mode = q.get('mode') || 'instanced', SECONDS = parseFloat(q.get('secs') || '8');
+const renderer = new THREE.WebGLRenderer({ antialias: false });
+renderer.setSize(innerWidth, innerHeight); document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xe8d3a0);
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.5, 2000);
+camera.position.set(0, 90, 160); camera.lookAt(0, 0, 0);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x886644, 1.2));
+const sun = new THREE.DirectionalLight(0xffffff, 2); sun.position.set(80, 120, 40); scene.add(sun);
+
+// terrain 512x512 vertices (about 522k triangles), height from cheap noise, vertex colours
+const SZ = 512, size = 400;
+const tg = new THREE.PlaneGeometry(size, size, SZ - 1, SZ - 1); tg.rotateX(-Math.PI / 2);
+const pos = tg.attributes.position, col = new Float32Array(pos.count * 3);
+const h = (x, z) => 6 * Math.sin(x * 0.03) * Math.cos(z * 0.025) + 2 * Math.sin(x * 0.11 + z * 0.07);
+for (let i = 0; i < pos.count; i++) {
+  const y = h(pos.getX(i), pos.getZ(i)); pos.setY(i, y);
+  const t = (y + 8) / 16; col[i * 3] = 0.8 + 0.1 * t; col[i * 3 + 1] = 0.65 + 0.1 * t; col[i * 3 + 2] = 0.4;
+}
+tg.setAttribute('color', new THREE.BufferAttribute(col, 3)); tg.computeVertexNormals();
+scene.add(new THREE.Mesh(tg, new THREE.MeshLambertMaterial({ vertexColors: true })));
+
+// one character: torso+head box on the root bone, two leg boxes on leg bones
+function characterGeometry() {
+  const parts = [[0.5, 0.8, 0.3, 0, 1.3, 0, 0], [0.3, 0.3, 0.3, 0, 1.85, 0, 0], [0.2, 0.9, 0.2, -0.13, 0.45, 0, 1], [0.2, 0.9, 0.2, 0.13, 0.45, 0, 2]];
+  const pg = [], idx = [], wts = [];
+  const gs = parts.map(([w, hh, d, x, y, z, bone]) => { const g = new THREE.BoxGeometry(w, hh, d); g.translate(x, y, z); return [g, bone]; });
+  const merged = []; let off = 0;
+  const positions = [], normals = [], indices = [], skinI = [], skinW = [], bones = [];
+  for (const [g, b] of gs) {
+    const p = g.attributes.position, n = g.attributes.normal;
+    for (let i = 0; i < p.count; i++) { positions.push(p.getX(i), p.getY(i), p.getZ(i)); normals.push(n.getX(i), n.getY(i), n.getZ(i)); skinI.push(b, 0, 0, 0); skinW.push(1, 0, 0, 0); bones.push(b); }
+    for (const i of g.index.array) indices.push(i + off);
+    off += p.count;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinI, 4));
+  geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinW, 4));
+  geo.setAttribute('bone', new THREE.Float32BufferAttribute(bones, 1));
+  geo.setIndex(indices);
+  return geo;
+}
+const geo = characterGeometry();
+const rnd = (() => { let s = 1; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+const people = [];
+for (let i = 0; i < N; i++) people.push({ x: (rnd() - 0.5) * 360, z: (rnd() - 0.5) * 360, a: rnd() * 6.28, ph: rnd() * 6.28, c: new THREE.Color().setHSL(rnd(), 0.5, 0.5) });
+const tmp = new THREE.Object3D();
+let update;
+if (mode === 'skinned') {
+  const meshes = [];
+  for (const p of people) {
+    const root = new THREE.Bone(), l = new THREE.Bone(), r = new THREE.Bone();
+    l.position.set(-0.13, 0.9, 0); r.position.set(0.13, 0.9, 0); root.add(l, r);
+    const sm = new THREE.SkinnedMesh(geo, new THREE.MeshLambertMaterial({ color: p.c }));
+    sm.add(root); sm.bind(new THREE.Skeleton([root, l, r]));
+    // the leg bones pivot at the hips; the geometry is in model space, so use bind inverses (done by Skeleton)
+    scene.add(sm); meshes.push({ sm, l, r });
+  }
+  update = (t, dt) => {
+    for (let i = 0; i < N; i++) {
+      const p = people[i], m = meshes[i];
+      p.x += Math.cos(p.a) * dt * 1.4; p.z += Math.sin(p.a) * dt * 1.4;
+      if (Math.abs(p.x) > 190 || Math.abs(p.z) > 190) p.a += 3.14;
+      m.sm.position.set(p.x, h(p.x, p.z), p.z); m.sm.rotation.y = -p.a + 1.57;
+      const s = Math.sin(t * 6 + p.ph) * 0.6; m.l.rotation.x = s; m.r.rotation.x = -s;
+    }
+  };
+} else {
+  const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uT = { value: 0 }; mat.userData.sh = sh;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float bone; attribute float phase; uniform float uT;')
+      .replace('#include <begin_vertex>', `vec3 transformed = vec3(position);
+        float sw = sin(uT * 6.0 + phase) * 0.6 * (bone < 0.5 ? 0.0 : (bone < 1.5 ? 1.0 : -1.0));
+        float cs = cos(sw), sn = sin(sw); vec3 q = transformed - vec3(0.0, 0.9, 0.0);
+        if (bone > 0.5) { transformed = vec3(q.x, q.y * cs - q.z * sn, q.y * sn + q.z * cs) + vec3(0.0, 0.9, 0.0); }`);
+  };
+  const g = geo.clone(); g.setAttribute('phase', new THREE.InstancedBufferAttribute(new Float32Array(N).map((_, i) => people[i].ph), 1));
+  const im = new THREE.InstancedMesh(g, mat, N); im.frustumCulled = false;
+  for (let i = 0; i < N; i++) im.setColorAt(i, people[i].c);
+  scene.add(im);
+  update = (t, dt) => {
+    if (mat.userData.sh) mat.userData.sh.uniforms.uT.value = t;
+    for (let i = 0; i < N; i++) {
+      const p = people[i];
+      p.x += Math.cos(p.a) * dt * 1.4; p.z += Math.sin(p.a) * dt * 1.4;
+      if (Math.abs(p.x) > 190 || Math.abs(p.z) > 190) p.a += 3.14;
+      tmp.position.set(p.x, h(p.x, p.z), p.z); tmp.rotation.y = -p.a + 1.57; tmp.updateMatrix(); im.setMatrixAt(i, tmp.matrix);
+    }
+    im.instanceMatrix.needsUpdate = true;
+  };
+}
+// the phase attribute must exist for the skinned geometry too (unused there)
+let last = performance.now(), frames = 0, t0 = last, cpu = 0, started = last;
+function loop(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  const c0 = performance.now();
+  update(now / 1000, dt); renderer.render(scene, camera);
+  cpu += performance.now() - c0; frames++;
+  if (now - t0 > 1000) { $('hud').textContent = `${mode} n=${N}: ${frames} fps, JS ${(cpu / frames).toFixed(1)} ms/frame, ${renderer.info.render.triangles} tris, ${renderer.info.render.calls} calls`; window.__bench = { mode, n: N, fps: frames * 1000 / (now - t0), cpuMs: cpu / frames, tris: renderer.info.render.triangles, calls: renderer.info.render.calls, elapsed: (now - started) / 1000 }; frames = 0; cpu = 0; t0 = now; }
+  requestAnimationFrame(loop);
+}
+function $(id) { return document.getElementById(id); }
+requestAnimationFrame(loop);
+</script></body></html>

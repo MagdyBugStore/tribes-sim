@@ -1,0 +1,17 @@
+<!doctype html>
+<meta charset="utf-8"><title>Hello 3D</title>
+<style>html,body{margin:0;height:100%;background:#111}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+const r = new THREE.WebGLRenderer({ antialias: true });
+r.setSize(innerWidth, innerHeight); document.body.appendChild(r.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xe8d9b0);
+const cam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 200); cam.position.set(6, 5, 8); cam.lookAt(0, 0.5, 0);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x886644, 1.2));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshLambertMaterial({ color: 0xc9a869 }));
+ground.rotation.x = -Math.PI / 2; scene.add(ground);
+const person = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 1, 4, 12), new THREE.MeshLambertMaterial({ color: 0x4a90e2 }));
+person.position.y = 0.8; scene.add(person);
+r.setAnimationLoop((t) => { person.position.x = Math.sin(t / 1000) * 3; person.rotation.y = t / 500; r.render(scene, cam); });
+</script>

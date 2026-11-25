@@ -385,3 +385,5 @@ The viewer in `web/` is fully Arabic with a right-to-left layout (`<html lang="a
 `web3d/` holds the 3D stack decision (`docs/ADR-0001-3d-stack.md`). To open the hello page:
 `python3 -m http.server 8000 --directory web3d`, then http://localhost:8000/hello.html. The benchmark is
 `web3d/proto/three-bench.html?mode=instanced&n=1000`.
+
+Terrain page: `./tribes --serve 8080 --web web3d`, then http://127.0.0.1:8080/terrain.html?t=noon (t = dawn, noon, dusk, night; drag to orbit, wheel to zoom). It builds the heightfield from `/api/map` polygons (hills, dunes, wadi) and falls back to a seeded field when the API is missing.

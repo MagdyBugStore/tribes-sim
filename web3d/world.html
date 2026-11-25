@@ -9,10 +9,10 @@ const q = new URLSearchParams(location.search), API = q.get('api') || '', replay
 // data source: live API, or a JSON-lines replay file: {"type":"map","data":{..}} / {"type":"people","data":{..}} per line
 async function load() {
   if (replay) { const lines = (await (await fetch(replay)).text()).trim().split('\n').map(JSON.parse); return { map: lines.find(l => l.type === 'map').data, peopleFrames: lines.filter(l => l.type === 'people').map(l => l.data), sch: (lines.find(l => l.type === 'schedules') || {}).data }; }
-  const [map, pe, sch] = await Promise.all([fetch(API + '/api/map').then(r => r.json()), fetch(API + '/api/people').then(r => r.json()), fetch(API + '/api/schedules').then(r => r.json())]);
-  return { map, peopleFrames: [pe], sch, live: true };
+  const [map, pe, sch, herds] = await Promise.all([fetch(API + '/api/map').then(r => r.json()), fetch(API + '/api/people').then(r => r.json()), fetch(API + '/api/schedules').then(r => r.json()), fetch(API + '/api/herds').then(r => r.json())]);
+  return { map, peopleFrames: [pe], sch, herds, live: true };
 }
-const { map, peopleFrames, live, sch } = await load();
+const { map, peopleFrames, live, sch, herds } = await load();
 const S = 0.1; // world metres -> scene units (map is 2000x1400)
 const r = new THREE.WebGLRenderer(); r.setSize(innerWidth, innerHeight); document.body.prepend(r.domElement);
 const sc = new THREE.Scene(); const night = q.get('night') === '1'; const hour = +(q.get('hour') ?? 12);
@@ -45,6 +45,11 @@ const stopAt = (p, h) => { const k = ALPHA.indexOf(p[6][((h % 24) + 24) % 24 | 0
 function updatePeople() { if (!SP) return; const h0 = Math.floor(simHour) % 24, f = simHour - Math.floor(simHour), zz = {};
   SP.forEach((p, i) => { const a = stopAt(p, h0), b = stopAt(p, h0 + 1); const t = Math.min(1, f * 3); const x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t; const moving = a[0] !== b[0] || a[1] !== b[1]; tmp.position.set(x * S, 0.6 + (moving ? Math.abs(Math.sin(simHour * 200 + i)) * 0.15 : 0), y * S); tmp.scale.setScalar(2.5); tmp.updateMatrix(); dots.setMatrixAt(i, tmp.matrix); });
   dots.instanceMatrix.needsUpdate = true; window.__sim = { hour: +simHour.toFixed(2) }; }
+// herds from /api/herds: one box per N animals (legend in HUD), grazing around the tribe's pastures
+let herdNote = '';
+if (herds) { const tot = herds.tribes.reduce((a, t) => a + Object.values(t.counts).reduce((x, y) => x + y, 0), 0), N = Math.max(1, Math.ceil(tot / 600)); const COL = { camel: 0xc8a060, horse: 0x6b3a1a, cattle: 0x333333, goat: 0xeeeeee, sheep: 0xf5f0e0, donkey: 0x888888, chicken: 0xd04020 }; const list = [];
+  herds.tribes.forEach(t => { const pas = (zonePos.pasture || []).filter(o => o[1] === t.tribe); const pool = pas.length ? pas : (zonePos.pasture || []); for (const [k, c] of Object.entries(t.counts)) for (let i = 0; i < Math.round(c / N); i++) { const o = pool[(list.length * 7) % Math.max(1, pool.length)]; if (o) list.push([o[3] + (rnd() - 0.5) * o[5] * 1.6, o[4] + (rnd() - 0.5) * o[5] * 1.6, k]); } });
+  const im = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.7, 0.5), new THREE.MeshLambertMaterial({ color: 0xffffff }), list.length); list.forEach((a, i) => { tmp.position.set(a[0] * S, 0.4, a[1] * S); tmp.rotation.y = rnd() * 6; tmp.scale.setScalar(a[2] === 'camel' ? 2 : a[2] === 'chicken' ? 0.5 : 1.2); tmp.updateMatrix(); im.setMatrixAt(i, tmp.matrix); im.setColorAt(i, new THREE.Color(COL[a[2]] || 0xffffff)); }); tmp.rotation.y = 0; sc.add(im); herdNote = ` | حيوانات ${tot} (كل مجسّم = ${N})`; }
 const cam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.5, 2000); const s0 = map.settlements[0]; const cx = +(q.get('cx') ?? s0.x) * S, cz = +(q.get('cz') ?? s0.y) * S, h = +(q.get('h') ?? 50);
 cam.position.set(cx, h, cz + h * 0.9); cam.lookAt(cx, 0, cz);
 const c = counts; document.getElementById('hud').textContent = `سكان ${rows.length} | بيوت ${c.home || 0} | آبار ${c.well || 0} | حقول ${c.field || 0} | محلات ${c.shop || 0} | الساعة ${hour}:00 | ${live ? 'بث حي' : 'إعادة تشغيل'}`;
@@ -76,5 +81,5 @@ bar2(); setInterval(bar2, 3000);
 const ctl = b => fetch(API + '/api/control', { method: 'POST', body: JSON.stringify(b) }).catch(() => {});
 document.querySelectorAll('#top button').forEach(b => b.onclick = async () => { const k = +b.dataset.s; if (k === 0) return ctl({ action: 'pause' }); await ctl({ action: 'speed', value: 20 / k }); ctl({ action: 'resume' }); });
 let lastT = performance.now();
-function loop() { const nowT = performance.now(); if (animate) simHour = (simHour + (nowT - lastT) / 1000 * speedH) % 24; lastT = nowT; updatePeople(); const hh = Math.floor(simHour); document.getElementById('hud').textContent = document.getElementById('hud').textContent.replace(/الساعة \d+:00/, 'الساعة ' + hh + ':00'); const sp = dist * 0.01; if (document.getElementById('fl').checked) { const f = new THREE.Vector3(); cam.getWorldDirection(f); if (keys.w) tgt.addScaledVector(f, sp); if (keys.s) tgt.addScaledVector(f, -sp); const rt = new THREE.Vector3().crossVectors(f, cam.up); if (keys.d) tgt.addScaledVector(rt, sp); if (keys.a) tgt.addScaledVector(rt, -sp); place(); } r.render(sc, cam); requestAnimationFrame(loop); } loop();
+function loop() { const nowT = performance.now(); if (animate) simHour = (simHour + (nowT - lastT) / 1000 * speedH) % 24; lastT = nowT; updatePeople(); const hh = Math.floor(simHour); if (!window.__hn) { window.__hn = 1; document.getElementById('hud').textContent += herdNote; } document.getElementById('hud').textContent = document.getElementById('hud').textContent.replace(/الساعة \d+:00/, 'الساعة ' + hh + ':00'); const sp = dist * 0.01; if (document.getElementById('fl').checked) { const f = new THREE.Vector3(); cam.getWorldDirection(f); if (keys.w) tgt.addScaledVector(f, sp); if (keys.s) tgt.addScaledVector(f, -sp); const rt = new THREE.Vector3().crossVectors(f, cam.up); if (keys.d) tgt.addScaledVector(rt, sp); if (keys.a) tgt.addScaledVector(rt, -sp); place(); } r.render(sc, cam); requestAnimationFrame(loop); } loop();
 </script>

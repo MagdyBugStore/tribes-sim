@@ -1,0 +1,44 @@
+<!doctype html><meta charset="utf-8"><title>العالم ثلاثي الأبعاد</title>
+<style>body{margin:0;font:13px sans-serif}#hud{position:fixed;top:6px;left:6px;background:#0008;color:#fff;padding:4px 8px;border-radius:4px;direction:rtl}</style>
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
+<div id="hud">…</div>
+<script type="module">
+import * as THREE from 'three';
+import * as B from './buildings.js';
+const q = new URLSearchParams(location.search), API = q.get('api') || '', replay = q.get('replay');
+// data source: live API, or a JSON-lines replay file: {"type":"map","data":{..}} / {"type":"people","data":{..}} per line
+async function load() {
+  if (replay) { const lines = (await (await fetch(replay)).text()).trim().split('\n').map(JSON.parse); return { map: lines.find(l => l.type === 'map').data, peopleFrames: lines.filter(l => l.type === 'people').map(l => l.data) }; }
+  const [map, pe] = await Promise.all([fetch(API + '/api/map').then(r => r.json()), fetch(API + '/api/people').then(r => r.json())]);
+  return { map, peopleFrames: [pe], live: true };
+}
+const { map, peopleFrames, live } = await load();
+const S = 0.1; // world metres -> scene units (map is 2000x1400)
+const r = new THREE.WebGLRenderer(); r.setSize(innerWidth, innerHeight); document.body.prepend(r.domElement);
+const sc = new THREE.Scene(); const night = q.get('night') === '1'; const hour = +(q.get('hour') ?? 12);
+const dark = hour < 5 || hour >= 19; sc.background = new THREE.Color(dark ? 0x101830 : hour < 7 ? 0xf0b080 : 0xe6dcc3);
+sc.add(new THREE.HemisphereLight(0xffffff, 0x886644, dark ? 0.35 : 1.1)); const dl = new THREE.DirectionalLight(0xffeecc, dark ? 0.2 : 1.2); dl.position.set(50, 100, 50); sc.add(dl);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(map.width * S, map.height * S), new THREE.MeshLambertMaterial({ map: B.tex('sand_light', 40) })); ground.rotation.x = -Math.PI / 2; ground.position.set(map.width * S / 2, 0, map.height * S / 2); sc.add(ground);
+const P = (x, y) => [x * S, y * S];
+// road
+{ const pts = map.road.map(p => new THREE.Vector3(p[0] * S, 0.1, p[1] * S)); const curve = new THREE.CatmullRomCurve3(pts); const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 80, 0.6, 3), new THREE.MeshLambertMaterial({ color: 0x8a7a5a })); tube.scale.y = 0.1; sc.add(tube); }
+// objects: [kind, tribe, id, x, y, radius, ?]
+const rnd = (() => { let a = 7; return () => ((a = (a * 9301 + 49297) % 233280) / 233280); })();
+const counts = {}; const zonePos = {}; const SC = 0.25; // building scale vs world metre
+const mk = { home: (o, i) => (o[1] === 0 ? B.house(i % 3) : B.tent(i % 3)), mosque: () => B.mosque(), majlis: () => B.majlis(), suq: () => B.stall(1, 1), shop: (o, i) => B.stall(i, 0.6), well: () => B.well(0.7), field: () => B.field(0.6), grove: (o, i) => B.palm(i % 3), pasture: (o, i) => B.acacia(i % 3), mill: () => B.mill(), oven: () => B.oven(), smithy: () => B.smithy(), salt_pan: () => B.saltPan(0.7), bayt_al_mal: () => B.granary(0.6), school: () => B.house(1), clinic: () => B.house(0), dairy: () => B.house(2), loom: () => B.house(0), tannery: () => B.house(1), caravanserai: () => B.majlis(), gate: () => B.flag() };
+map.objects.forEach((o, i) => { const k = o[0]; counts[k] = (counts[k] || 0) + 1; (zonePos[k] ||= []).push(o);
+  const f = mk[k]; if (!f) return; const g = f(o, i); const [x, z] = P(o[3], o[4]); g.position.set(x, 0, z); g.rotation.y = rnd() * 6.28; g.scale.setScalar((k === 'home' ? (o[1] === 0 ? 0.28 : 0.6) : SC * 3) * (0.85 + rnd() * 0.3)); sc.add(g); });
+// people as instanced dots placed at their zone object (hash by id); live = current API frame, hour from ?hour
+const frame = peopleFrames[Math.min(peopleFrames.length - 1, +(q.get('frame') ?? 0))]; const F = frame.fields, rows = frame.rows;
+const iZone = F.indexOf('zone'), iAct = F.indexOf('activity'), iTribe = F.indexOf('tribe'), iRole = F.indexOf('role');
+const ZK = { home: 'home', mosque: 'mosque', well: 'well', school: 'school', field: 'field', pasture: 'pasture', suq: 'suq', shop: 'shop', oven: 'oven', mill: 'mill', smithy: 'smithy', majlis: 'majlis', desert: null };
+const dots = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.25, 0.8, 2, 6), new THREE.MeshLambertMaterial({ color: 0xffffff }), rows.length); const tmp = new THREE.Object3D(); const zc = {};
+rows.forEach((p, i) => { const z = p[iZone] || 'home'; zc[z] = (zc[z] || 0) + 1; const kind = ZK[z] ?? null; const pool = kind ? (zonePos[kind] || []).filter(o => kind !== 'home' || o[1] === p[iTribe]) : null; let x, y; if (pool && pool.length) { const o = pool[(i * 2654435761 >>> 0) % pool.length]; x = o[3] + (rnd() - 0.5) * o[5] * 0.8; y = o[4] + (rnd() - 0.5) * o[5] * 0.8; } else { const s = map.settlements[p[iTribe]] || map.settlements[0]; x = s.x + (rnd() - 0.5) * 400; y = s.y + (rnd() - 0.5) * 400; }
+  tmp.position.set(x * S, 0.6, y * S); tmp.scale.setScalar(3); tmp.updateMatrix(); dots.setMatrixAt(i, tmp.matrix); dots.setColorAt(i, new THREE.Color(p[iTribe] ? 0x3a6fd8 : 0xd8553a)); });
+sc.add(dots);
+const cam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.5, 2000); const s0 = map.settlements[0]; const cx = +(q.get('cx') ?? s0.x) * S, cz = +(q.get('cz') ?? s0.y) * S, h = +(q.get('h') ?? 50);
+cam.position.set(cx, h, cz + h * 0.9); cam.lookAt(cx, 0, cz);
+const c = counts; document.getElementById('hud').textContent = `سكان ${rows.length} | بيوت ${c.home || 0} | آبار ${c.well || 0} | حقول ${c.field || 0} | محلات ${c.shop || 0} | الساعة ${hour}:00 | ${live ? 'بث حي' : 'إعادة تشغيل'}`;
+window.__bench = window.__world = { people: rows.length, counts, zones: zc };
+function loop() { r.render(sc, cam); requestAnimationFrame(loop); } loop();
+</script>

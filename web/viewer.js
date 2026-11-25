@@ -50,6 +50,8 @@ const clock = { base: 0, at: 0, spd: BASE_SPD, paused: false, frozen: 0, valid: 
 const view = { scale: 1, x: 0, y: 0, w: 0, h: 0, dpr: 1, fit: 1 };
 const filter = { tribe: -1, group: -1, act: '' };
 let showLabels = true, showAnimals = true;
+let peopleRows = [];
+let selId = -1, follow = false, selData = null;
 let lastDraw = 0, fpsFrames = 0, fpsAt = 0, fps = 0;
 
 function setStatus(s) { $('status').textContent = s; }
@@ -231,6 +233,7 @@ async function pollState() {
 async function pollPeople() {
   try {
     const p = await getJSON('/api/people');
+    peopleRows = p.rows;
     const iSick = p.fields.indexOf('sick');
     let sick = 0;
     for (const r of p.rows) sick += r[iSick];
@@ -299,14 +302,21 @@ function zoomAt(px, py, k) {
 }
 
 let drag = null;
-canvas.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); canvas.classList.add('drag'); });
+canvas.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY }; canvas.setPointerCapture(e.pointerId); canvas.classList.add('drag'); });
 canvas.addEventListener('pointermove', (e) => {
   if (!drag) return;
   view.x += e.clientX - drag.x; view.y += e.clientY - drag.y;
   drag.x = e.clientX; drag.y = e.clientY;
 });
 const endDrag = () => { drag = null; canvas.classList.remove('drag'); };
-canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointerup', (e) => {
+  if (drag && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 4) {
+    const r = canvas.getBoundingClientRect();
+    const id = pickPerson(e.clientX - r.left, e.clientY - r.top);
+    if (id >= 0) selectPerson(id); else if (selId >= 0 && !follow) closePanel();
+  }
+  endDrag();
+});
 canvas.addEventListener('pointercancel', endDrag);
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
@@ -334,6 +344,138 @@ GROUPS.forEach((g, i) => {
   const o = document.createElement('option');
   o.value = i; o.textContent = g.name; $('f-group').appendChild(o);
 });
+
+// --- person panel -------------------------------------------------------------------------
+function pickPerson(px, py) {
+  const s = sched;
+  if (!s) return -1;
+  const sc = view.scale, rad = Math.max(6, 3 * Math.min(4, sc) + 3);
+  let best = -1, bd = rad * rad;
+  for (let i = 0; i < s.n; i++) {
+    if (!s.vis[i]) continue;
+    const dx = s.cx[i] * sc + view.x - px, dy = s.cy[i] * sc + view.y - py;
+    const d = dx * dx + dy * dy;
+    if (d < bd) { bd = d; best = i; }
+  }
+  return best >= 0 ? s.ids[best] : -1;
+}
+function indexOfId(id) {
+  const s = sched;
+  if (!s) return -1;
+  if (!s.byId) { s.byId = new Map(); for (let i = 0; i < s.n; i++) s.byId.set(s.ids[i], i); }
+  const i = s.byId.get(id);
+  return i === undefined ? -1 : i;
+}
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const NEED_COL = { hunger: '#e0a040', thirst: '#4a9be2', energy: '#8ec36a', health: '#e05a5a', happiness: '#d68fe0' };
+const KIND_COL = { sleep: '#2c3a66', pray: '#4fd1c5', eat: '#e0b050', work: '#59b35a', study: '#7aa7e8', rest: '#6b6b78', social: '#d68fe0' };
+function slotColor(name) {
+  if (name.startsWith('sleep')) return KIND_COL.sleep;
+  if (name.startsWith('pray') || name === 'jumuah' || name.includes('prayer')) return KIND_COL.pray;
+  if (name.startsWith('eat')) return KIND_COL.eat;
+  if (name === 'study' || name === 'learn' || name.includes('school')) return KIND_COL.study;
+  if (name.startsWith('rest') || name === 'play' || name === 'housework') return KIND_COL.rest;
+  if (name.startsWith('sit') || name.includes('majlis') || name === 'compose' || name === 'visit') return KIND_COL.social;
+  return KIND_COL.work;
+}
+function link(l) { return l ? `<a data-id="${l.id}">${esc(l.name)}</a>` : ''; }
+function renderPanel() {
+  const d = selData, el = $('panel');
+  if (!d) return;
+  const h = Math.min(23, Math.floor(hourNow()));
+  const cur = d.today && d.today[h];
+  let html = `<div class="top"><div><h3>${esc(d.name)}</h3><div class="sub">#${d.id} &middot; ${d.age} y &middot; ${esc(d.stage)} &middot; ${esc(d.gender)}</div>
+    <div class="sub">${esc(d.role)} &middot; ${esc(state && state.tribes && state.tribes[d.tribe] ? (state.tribes[d.tribe].name || state.tribes[d.tribe]) : 'tribe ' + d.tribe)}${d.sick ? '<span class="tag">sick</span>' : ''}${d.pregnant ? '<span class="tag ok">expecting</span>' : ''}${d.retired ? '<span class="tag ok">retired</span>' : ''}${d.alive ? '' : '<span class="tag">deceased</span>'}</div></div>
+    <div><button id="p-follow" class="${follow ? 'on' : ''}">${follow ? 'Following' : 'Follow'}</button> <button id="p-close" title="Close">&times;</button></div></div>`;
+  if (cur) {
+    html += `<h5>Right now (${String(h).padStart(2, '0')}:00)</h5><div class="now"><b>${esc(cur[1])}</b><div class="ar" lang="ar">${esc(cur[2])}</div>
+      <div class="sub">at: ${esc(cur[4])} <span lang="ar" dir="rtl">(${esc(cur[5])})</span></div><div class="why">${esc(cur[6])}</div></div>`;
+  } else if (!d.alive) {
+    html += `<h5>Status</h5><div class="now">Died on day ${d.death_day}${d.death_cause ? ': ' + esc(d.death_cause) : ''}</div>`;
+  }
+  html += '<h5>Needs</h5>';
+  for (const k of ['hunger', 'thirst', 'energy', 'health', 'happiness']) {
+    const v = d.needs[k];
+    html += `<div class="bar"><span class="n">${k}</span><div class="track"><div class="fill" style="width:${Math.max(0, Math.min(100, v))}%;background:${v < 30 ? '#e05a5a' : NEED_COL[k]}"></div></div><span class="v">${Math.round(v)}</span></div>`;
+  }
+  html += `<div class="kv" style="margin-top:6px"><span>Honor</span><span>${d.honor.toFixed(1)}</span><span>Skill</span><span>${d.skill.toFixed(2)}</span></div>`;
+  html += `<h5>Money and goods</h5><div class="kv"><span>Pouch</span><span>${d.pouch.toFixed(1)} dirhams</span><span>Wadiah (savings)</span><span>${d.wadiah.toFixed(1)}</span><span>Qard (debt)</span><span>${d.qard.toFixed(1)}</span></div>`;
+  if (d.goods && d.goods.length) {
+    html += '<div class="kv" style="margin-top:4px">' + d.goods.map((g) => `<span>${esc(g[0])}${g[2] ? ' (animals)' : ''}</span><span>${g[1] >= 10 ? Math.round(g[1]) : g[1].toFixed(1)}</span>`).join('') + '</div>';
+  }
+  if (d.today && d.today.length) {
+    html += '<h5>Today</h5><div class="strip">' + d.today.map((a, i) => `<i class="${i === h ? 'cur' : ''}" style="background:${slotColor(a[0])}" title="${String(i).padStart(2, '0')}:00 ${esc(a[1])}"></i>`).join('') + '</div><div class="hours"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>';
+  }
+  const f = d.family || {};
+  const fam = [['Spouse', f.spouse ? [f.spouse] : []], ['Father', f.father ? [f.father] : []], ['Mother', f.mother ? [f.mother] : []], ['Children', f.children || []], ['Siblings', f.siblings || []]];
+  html += '<h5>Family</h5><div class="links">' + fam.map(([n, l]) => `<div><span class="sub">${n}:</span> ${l.length ? l.map(link).join('') : '<span class="sub">none</span>'}</div>`).join('') + '</div>';
+  html += `<h5>History (last ${d.history.length})</h5><div id="hist">${d.history.slice().reverse().map((x) => `<div>${esc(x)}</div>`).join('') || '<div class="sub">nothing yet</div>'}</div>`;
+  const keep = el.scrollTop;
+  el.innerHTML = html;
+  el.scrollTop = keep;
+  el.hidden = false; document.body.classList.add('pn');
+  $('p-close').onclick = closePanel;
+  $('p-follow').onclick = () => { follow = !follow; renderPanel(); };
+  el.querySelectorAll('.links a').forEach((a) => { a.onclick = () => selectPerson(parseInt(a.dataset.id, 10)); });
+}
+async function loadPerson(id) {
+  try {
+    const d = await getJSON('/api/person/' + id);
+    if (id !== selId) return;
+    selData = d;
+    renderPanel();
+  } catch (e) { $('panel').hidden = false; $('panel').textContent = 'Person unavailable'; }
+}
+function selectPerson(id) {
+  if (id !== selId) { selData = null; $('panel').scrollTop = 0; }
+  selId = id;
+  loadPerson(id);
+}
+function closePanel() { selId = -1; selData = null; follow = false; $('panel').hidden = true; document.body.classList.remove('pn'); }
+setInterval(() => { if (selId >= 0) loadPerson(selId); }, 2000);
+setInterval(() => { if (selId >= 0 && selData) renderPanel(); }, 1000);
+function followStep() {
+  if (!follow || selId < 0) return;
+  const i = indexOfId(selId);
+  if (i < 0) return;
+  const target = Math.max(view.scale, view.fit * 4);
+  if (view.scale < target) view.scale += (target - view.scale) * 0.2;
+  const px = view.w / 2 - ($('panel').hidden ? 0 : 170), py = view.h / 2;
+  view.x += (px - (s_cx(i) * view.scale + view.x)) * 0.25;
+  view.y += (py - (s_cy(i) * view.scale + view.y)) * 0.25;
+}
+const s_cx = (i) => sched.cx[i], s_cy = (i) => sched.cy[i];
+function drawSelected() {
+  if (selId < 0) return;
+  const i = indexOfId(selId);
+  if (i < 0) return;
+  const px = sched.cx[i] * view.scale + view.x, py = sched.cy[i] * view.scale + view.y;
+  ctx.save(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(px, py, 10, 0, 6.283); ctx.stroke();
+  ctx.strokeStyle = '#ffd34d'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(px, py, 13, 0, 6.283); ctx.stroke();
+  ctx.restore();
+}
+// search
+const sInput = $('search'), sRes = $('results');
+sInput.addEventListener('input', () => {
+  const q = sInput.value.trim().toLowerCase();
+  sRes.innerHTML = ''; sRes.style.display = 'none';
+  if (q.length < 1) return;
+  const out = [];
+  const num = /^\d+$/.test(q) ? parseInt(q, 10) : -1;
+  for (const r of peopleRows) {
+    if (r[0] === num || String(r[1]).toLowerCase().includes(q)) { out.push(r); if (out.length >= 8) break; }
+  }
+  for (const r of out) {
+    const d = document.createElement('div');
+    d.textContent = `${r[1]} (#${r[0]}, ${r[4]} y, ${r[5]})`;
+    d.onclick = () => { selectPerson(r[0]); sRes.style.display = 'none'; sInput.value = ''; };
+    sRes.appendChild(d);
+  }
+  if (out.length) sRes.style.display = 'block';
+});
+document.addEventListener('click', (e) => { if (!e.target.closest('#searchbox')) sRes.style.display = 'none'; });
+if (params.has('select')) { selectPerson(parseInt(params.get('select'), 10)); follow = params.has('follow'); }
 
 // --- legend ----------------------------------------------------------------------------
 (function buildLegend() {
@@ -485,7 +627,9 @@ function frame(t) {
   drawWorld();
   drawNight(h);
   drawLabels();
+  followStep();
   drawPeople(h);
+  drawSelected();
   drawClock(h);
   fpsFrames++;
   if (t - fpsAt > 2000) { fps = Math.round(fpsFrames * 1000 / (t - fpsAt)); fpsFrames = 0; fpsAt = t; }
@@ -498,4 +642,4 @@ pollState();
 setInterval(pollState, 500);
 setInterval(pollPeople, 2000);
 requestAnimationFrame(frame);
-window.__viewer = { get fps() { return fps; }, get day() { return schedDay; }, get people() { return sched ? sched.n : 0; } };
+window.__viewer = { get fps() { return fps; }, get day() { return schedDay; }, get people() { return sched ? sched.n : 0; }, pick: pickPerson, select: selectPerson, view, get sel() { return selId; } };

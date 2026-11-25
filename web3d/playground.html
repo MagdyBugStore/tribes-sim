@@ -1,0 +1,34 @@
+<!doctype html>
+<meta charset="utf-8"><title>3D playground: people and animals walking</title>
+<style>html,body{margin:0;height:100%;background:#111}canvas{display:block}#i{position:fixed;top:6px;left:8px;color:#fff;font:12px sans-serif}</style>
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
+<div id="i">loading...</div>
+<script type="module">
+import * as THREE from 'three';
+import { FBXLoader } from './vendor/three/addons/loaders/FBXLoader.js';
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setSize(innerWidth, innerHeight); document.body.appendChild(r.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xe8d9b0);
+const cam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 500); cam.position.set(0, 4, 9); cam.lookAt(0, 1, 0);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xaa9060, 2.2));
+const sun = new THREE.DirectionalLight(0xffffff, 1.5); sun.position.set(5, 10, 5); scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshLambertMaterial({ color: 0xd2b77a }));
+ground.rotation.x = -Math.PI / 2; scene.add(ground);
+const base = 'assets/', mixers = [], log = [];
+const C = 'characters/Ultimate Animated Character Pack - Nov 2019/FBX/', F = 'farm_animals/Farm Animals by @Quaternius/FBX/';
+const jobs = [[C + 'Casual_Male.fbx', -4, 1], [C + 'Casual_Female.fbx', -2.5, 1], [C + 'Elf.fbx', -1, 1],
+  [F + 'Horse.fbx', 1.5, 1], [F + 'Cow.fbx', 3.5, 1], [F + 'Sheep.fbx', 5.2, 1]];
+const L = new FBXLoader();
+async function add(path, x, k) {
+  const o = await L.loadAsync(base + encodeURI(path)); o.position.set(x, 0, 0);
+  const box = new THREE.Box3().setFromObject(o), h = box.max.y - box.min.y;
+  o.scale.setScalar((path.startsWith('char') ? 1.8 : 1.4) / h * k); scene.add(o);
+  const names = o.animations.map((a) => a.name); log.push(path.split('/').pop() + ' [' + names.join(',') + ']');
+  const walk = o.animations.find((a) => /walk/i.test(a.name)) || o.animations[0];
+  if (walk) { const m = new THREE.AnimationMixer(o); m.clipAction(walk).play(); mixers.push(m); }
+}
+for (const j of jobs) await add(...j);
+window.__log = log;
+const clock = new THREE.Clock();
+r.setAnimationLoop(() => { const d = clock.getDelta(); mixers.forEach((m) => m.update(d)); r.render(scene, cam); });
+document.getElementById('i').textContent = 'loaded: ' + log.join(' | ');
+</script>

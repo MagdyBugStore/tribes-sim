@@ -1,3 +1,4 @@
 tribes
 tests/run_tests
 *.o
+web3d/assets/

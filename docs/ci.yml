@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the simulation
+        run: g++ -O2 -std=c++17 -pthread src/*.cpp -o tribes
+
+      - name: Build and run the tests
+        run: |
+          g++ -O2 -std=c++17 -pthread -Isrc tests/run_tests.cpp $(ls src/*.cpp | grep -v main.cpp) -o tests/run_tests
+          ./tests/run_tests
+
+      - name: Start the server and smoke-test the API
+        run: |
+          ./tribes --serve 8080 --people 300 --days 0 --tick-interval 0.2 < /dev/null > server.log 2>&1 &
+          echo $! > server.pid
+          for i in $(seq 1 30); do
+            curl -fs http://127.0.0.1:8080/api/state > /dev/null && break
+            sleep 1
+          done
+          sleep 3   # let a few days pass so history and caravans have content
+          bash tests/smoke_api.sh 8080
+          kill "$(cat server.pid)" || true
+
+      - name: Show the server log on failure
+        if: failure()
+        run: tail -n 40 server.log || true

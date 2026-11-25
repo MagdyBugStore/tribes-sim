@@ -19,8 +19,11 @@ g++ -O2 -std=c++17 -pthread src/*.cpp -o tribes
 ./tribes --people 3000 --days 365 --seed 1 --headless --csv run.csv
 
 # the test suite (plain asserts, no framework; ~2 seconds)
-g++ -O2 -std=c++17 -Isrc tests/run_tests.cpp $(ls src/*.cpp | grep -v main.cpp) -o tests/run_tests
+g++ -O2 -std=c++17 -pthread -Isrc tests/run_tests.cpp $(ls src/*.cpp | grep -v main.cpp) -o tests/run_tests
 ./tests/run_tests
+
+# smoke-test the HTTP API of a running server (curl + python3 only)
+bash tests/smoke_api.sh 8080
 ```
 
 Flags: `--people N` (all CSV quantities scale linearly from their
@@ -93,6 +96,84 @@ Dashboards (button "Dashboards", top-left of the map): Economy (money supply and
 Console commands while running: `person <id>`, `family <id>`,
 `status`, `history <id>`, `schedule <id> [day]`, `activity [hour]`, `world`, `top`, `economy`, `tribes`, `market`,
 `trade <good>`, `chain <good>`, `pause`, `resume`, `speed <s>`, `quit`.
+
+## Running the viewer
+
+```sh
+g++ -O2 -std=c++17 -pthread src/*.cpp -o tribes
+./tribes --serve 8080 --people 3000 --days 0 --tick-interval 24 < /dev/null
+# then open http://127.0.0.1:8080/ in a browser
+```
+
+`--tick-interval 24` is one simulated day per 24 real seconds (the viewer's 1x);
+the speed buttons change it live. `< /dev/null` is for running without a
+terminal; with a terminal you can leave it out and use the console commands.
+If port 8080 is taken, use another port in both places. The page is a 2D
+map of the valley with every person as a dot, a person side panel (click a
+dot), and dashboards. See the viewer, activity layer and dashboards notes in
+the API section above. CI (`.github/workflows/ci.yml` (kept as `docs/ci.yml` until a token with the workflow scope can add it)) builds, runs
+`tests/run_tests`, starts a 300-person server and runs `tests/smoke_api.sh`
+on every push and pull request.
+
+## Architecture
+
+```
+                 +--------------------------- tribes (one process) ----------------------------+
+                 |                                                                              |
+  simulation     |  World::step() once per day  --->  World (people, shops, herds, caravans)    |
+  thread         |        |  holds World::lock while stepping                                   |
+                 |        +--> Dashboard::record(): one row per day (own mutex, 365 days)      |
+                 |                                                                              |
+  HTTP thread    |  http_server: GET /api/*  ---> take_snapshot / take_person / json_schedules  |
+                 |        |       (copy under World::lock, build JSON outside it)               |
+                 |        +--> /api/dash is served from the Dashboard copy, no World lock       |
+                 |        +--> GET /, /<file>: static files from web/                           |
+                 +------------------------------------------------------------------------------+
+                                         |   JSON over HTTP, same origin, 127.0.0.1 only
+                                         v
+  browser (web/):  viewer.js  = map, people dots, clock, person panel, search
+                   dashboards.js = economy, market, herds, caravans, alerts, ticker
+  read-only: the viewer never changes the simulation except pause/resume/speed
+  through POST /api/control.
+```
+
+Layers inside the simulation, bottom to top: `world`, `economy`, `herds`,
+`caravan`, `institutions` and `demographics` (the model and its audited
+books); `activity` (what each person does each hour, read-only); `map`
+(where things are, read-only); `snapshot`, `schedules_api`, `dashboard` and
+`http_server` (the viewer's read side).
+
+## How a day is built (the activity layer)
+
+`schedule_for(world, person, day)` in `src/activity.cpp` returns 24 hourly
+slots for one person. It never touches the simulation's random numbers
+(variations come from a hash of person id, day and hour), so it cannot
+change the simulation. The steps, in order:
+
+1. Children (under 16): sleep at night, play, eat at fixed hours, school
+   from 8 to 12 on weekdays for ages 7 to 15, housework in the late
+   afternoon. Prayer starts at the prayer age.
+2. Adults start from the role's work block (a 24-letter mask in
+   `activity.cpp`: sleep, rest, main work, second work). Elders sit in the
+   majlis or visit neighbours in the morning and late afternoon. Unknown
+   roles work as day laborers.
+3. On a caravan day, roles with a caravan job (trade, guard, caravan work)
+   switch to it.
+4. Pregnancy late in term moves heavy work to housework. In summer, outdoor
+   work from 11 to 14 becomes a rest in the heat. On Friday teachers rest.
+5. Prayers: Fajr, Dhuhr, Asr, Maghrib and Isha are inserted (men at the
+   mosque, women at home); on Friday the noon hours become Jumu'ah at the
+   mosque.
+6. Sickness: everything except sleep, prayer and meals becomes rest at home.
+7. Needs (only for the current day): thirst under 30 adds a trip to the
+   well, hunger under 30 adds a meal at midday.
+
+Each slot has a machine name, English and Arabic labels, and a zone. The map
+module turns a zone into a position for that person (own home, own field,
+tribe well, the suq, the mosque). `/api/schedules` packs everyone's 24 slots
+and stops once per day; `/api/person/<id>` adds a one-line reason for each
+slot (for example "thirsty (thirst 10 of 100): going to the well").
+`./tribes --schedule <id>` prints one person's day on the console.
 
 ## How it is organized
 
@@ -236,6 +317,21 @@ sources feeding the mills.
   cannot become a fractional-reserve bank.
 - Caravans are abstracted to "a company arrives every 10-20 days with cargo
   and a purse"; individual travelers and routes are not modeled.
+- The viewer is a read-only 2D view. It does not edit the world, has no
+  accounts, and listens only on 127.0.0.1 (no CORS, loopback Host and
+  same-origin checks).
+- People are drawn walking in straight lines between their hourly stops;
+  there is no path-finding, and positions inside a settlement are
+  deterministic spots, not simulated movement.
+- Schedules are derived from role, age, season and needs, not stored in the
+  simulation; a person's slots for past days are recomputed from today's
+  state, and needs only affect the current day.
+- The dashboards keep a rolling 365-day history in the server's memory
+  only; it is lost when the process stops. Births and slaughters of animals
+  come from the stock ledger and are zero in the first months because
+  breeding takes long.
+- The 2D viewer was tested in Chrome only. At 3,000 people it holds 30 fps
+  at 10x speed on the test machine; much older machines may be slower.
 - Deaths from hunger and thirst lag the shortage by design (hunger ->
   sickness -> death), so every lean wave echoes for about a month.
 

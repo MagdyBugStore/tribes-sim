@@ -54,7 +54,7 @@ let peopleRows = [];
 let selId = -1, follow = false, selData = null;
 let lastDraw = 0, fpsFrames = 0, fpsAt = 0, fps = 0;
 
-function setStatus(s) { $('status').textContent = s; }
+function setStatus(s) { $('status').textContent = ar(s); }
 
 async function getJSON(url) {
   const r = await fetch(url, { cache: 'no-store' });
@@ -106,7 +106,7 @@ async function loadMap() {
   const sel = $('f-tribe');
   map.settlements.forEach((s) => {
     const o = document.createElement('option');
-    o.value = s.tribe; o.textContent = s.name; sel.appendChild(o);
+    o.value = s.tribe; o.textContent = ar(s.name); sel.appendChild(o);
   });
   fitView();
 }
@@ -183,9 +183,9 @@ async function loadSchedule(day) {
     // activity filter options
     const sel = $('f-act'), keep = filter.act;
     sel.length = 1;
-    d.acts.slice().sort((a, b) => a[1].localeCompare(b[1])).forEach((a) => {
+    d.acts.slice().sort((a, b) => a[2].localeCompare(b[2], 'ar')).forEach((a) => {
       const o = document.createElement('option');
-      o.value = a[0]; o.textContent = a[1]; sel.appendChild(o);
+      o.value = a[0]; o.textContent = a[2]; sel.appendChild(o);
     });
     sel.value = keep;
     sched = next;
@@ -220,11 +220,11 @@ async function pollState() {
     clock.spd = spd; clock.paused = s.paused; clock.valid = true;
     state = s;
     $('day').textContent = s.day;
-    $('season').textContent = s.season;
+    $('season').textContent = ar(s.season);
     $('pop').textContent = s.population;
     updateSpeedButtons(s);
     if (schedDay !== s.day) loadSchedule(s.day);
-    setStatus(fps ? fps + ' fps' : 'live');
+    setStatus(fps ? fps + ' إطار/ث' : 'live');
   } catch (e) {
     setStatus('waiting for the simulation...');
   }
@@ -237,7 +237,7 @@ async function pollPeople() {
     const iSick = p.fields.indexOf('sick');
     let sick = 0;
     for (const r of p.rows) sick += r[iSick];
-    $('pop').title = sick + ' sick';
+    $('pop').title = sick + ' مريض';
   } catch (e) { /* the state poll reports connection trouble */ }
 }
 
@@ -342,7 +342,7 @@ $('labels').onchange = (e) => { showLabels = e.target.checked; };
 $('animals').onchange = (e) => { showAnimals = e.target.checked; };
 GROUPS.forEach((g, i) => {
   const o = document.createElement('option');
-  o.value = i; o.textContent = g.name; $('f-group').appendChild(o);
+  o.value = i; o.textContent = ar(g.name); $('f-group').appendChild(o);
 });
 
 // --- person panel -------------------------------------------------------------------------
@@ -366,7 +366,7 @@ function indexOfId(id) {
   const i = s.byId.get(id);
   return i === undefined ? -1 : i;
 }
-const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const esc = (t) => ar(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const NEED_COL = { hunger: '#e0a040', thirst: '#4a9be2', energy: '#8ec36a', health: '#e05a5a', happiness: '#d68fe0' };
 const KIND_COL = { sleep: '#2c3a66', pray: '#4fd1c5', eat: '#e0b050', work: '#59b35a', study: '#7aa7e8', rest: '#6b6b78', social: '#d68fe0' };
 function slotColor(name) {
@@ -384,32 +384,32 @@ function renderPanel() {
   if (!d) return;
   const h = Math.min(23, Math.floor(hourNow()));
   const cur = d.today && d.today[h];
-  let html = `<div class="top"><div><h3>${esc(d.name)}</h3><div class="sub">#${d.id} &middot; ${d.age} y &middot; ${esc(d.stage)} &middot; ${esc(d.gender)}</div>
-    <div class="sub">${esc(d.role)} &middot; ${esc(state && state.tribes && state.tribes[d.tribe] ? (state.tribes[d.tribe].name || state.tribes[d.tribe]) : 'tribe ' + d.tribe)}${d.sick ? '<span class="tag">sick</span>' : ''}${d.pregnant ? '<span class="tag ok">expecting</span>' : ''}${d.retired ? '<span class="tag ok">retired</span>' : ''}${d.alive ? '' : '<span class="tag">deceased</span>'}</div></div>
-    <div><button id="p-follow" class="${follow ? 'on' : ''}">${follow ? 'Following' : 'Follow'}</button> <button id="p-close" title="Close">&times;</button></div></div>`;
+  let html = `<div class="top"><div><h3>${esc(d.name)}</h3><div class="sub">#${d.id} &middot; ${d.age} سنة &middot; ${esc(d.stage)} &middot; ${esc(d.gender)}</div>
+    <div class="sub">${esc(d.role)} &middot; ${esc(state && state.tribes && state.tribes[d.tribe] ? (state.tribes[d.tribe].name || state.tribes[d.tribe]) : 'القبيلة ' + d.tribe)}${d.sick ? '<span class="tag">مريض</span>' : ''}${d.pregnant ? '<span class="tag ok">حامل</span>' : ''}${d.retired ? '<span class="tag ok">متقاعد</span>' : ''}${d.alive ? '' : '<span class="tag">متوفى</span>'}</div></div>
+    <div><button id="p-follow" class="${follow ? 'on' : ''}">${follow ? 'يتابَع' : 'تابِع'}</button> <button id="p-close" title="إغلاق">&times;</button></div></div>`;
   if (cur) {
-    html += `<h5>Right now (${String(h).padStart(2, '0')}:00)</h5><div class="now"><b>${esc(cur[1])}</b><div class="ar" lang="ar">${esc(cur[2])}</div>
-      <div class="sub">at: ${esc(cur[4])} <span lang="ar" dir="rtl">(${esc(cur[5])})</span></div><div class="why">${esc(cur[6])}</div></div>`;
+    html += `<h5>الآن (${String(h).padStart(2, '0')}:00)</h5><div class="now"><b>${esc(cur[2])}</b>
+      <div class="sub">المكان: ${esc(cur[5])}</div><div class="why">${esc(cur[6])}</div></div>`;
   } else if (!d.alive) {
-    html += `<h5>Status</h5><div class="now">Died on day ${d.death_day}${d.death_cause ? ': ' + esc(d.death_cause) : ''}</div>`;
+    html += `<h5>الحالة</h5><div class="now">توفي في اليوم ${d.death_day}${d.death_cause ? ': ' + esc(d.death_cause) : ''}</div>`;
   }
-  html += '<h5>Needs</h5>';
+  html += '<h5>الحاجات</h5>';
   for (const k of ['hunger', 'thirst', 'energy', 'health', 'happiness']) {
     const v = d.needs[k];
-    html += `<div class="bar"><span class="n">${k}</span><div class="track"><div class="fill" style="width:${Math.max(0, Math.min(100, v))}%;background:${v < 30 ? '#e05a5a' : NEED_COL[k]}"></div></div><span class="v">${Math.round(v)}</span></div>`;
+    html += `<div class="bar"><span class="n">${ar(k)}</span><div class="track"><div class="fill" style="width:${Math.max(0, Math.min(100, v))}%;background:${v < 30 ? '#e05a5a' : NEED_COL[k]}"></div></div><span class="v">${Math.round(v)}</span></div>`;
   }
-  html += `<div class="kv" style="margin-top:6px"><span>Honor</span><span>${d.honor.toFixed(1)}</span><span>Skill</span><span>${d.skill.toFixed(2)}</span></div>`;
-  html += `<h5>Money and goods</h5><div class="kv"><span>Pouch</span><span>${d.pouch.toFixed(1)} dirhams</span><span>Wadiah (savings)</span><span>${d.wadiah.toFixed(1)}</span><span>Qard (debt)</span><span>${d.qard.toFixed(1)}</span></div>`;
+  html += `<div class="kv" style="margin-top:6px"><span>الشرف</span><span>${d.honor.toFixed(1)}</span><span>المهارة</span><span>${d.skill.toFixed(2)}</span></div>`;
+  html += `<h5>المال والمتاع</h5><div class="kv"><span>الكيس</span><span>${d.pouch.toFixed(1)} درهم</span><span>الوديعة (مدخرات)</span><span>${d.wadiah.toFixed(1)}</span><span>القرض (دين)</span><span>${d.qard.toFixed(1)}</span></div>`;
   if (d.goods && d.goods.length) {
-    html += '<div class="kv" style="margin-top:4px">' + d.goods.map((g) => `<span>${esc(g[0])}${g[2] ? ' (animals)' : ''}</span><span>${g[1] >= 10 ? Math.round(g[1]) : g[1].toFixed(1)}</span>`).join('') + '</div>';
+    html += '<div class="kv" style="margin-top:4px">' + d.goods.map((g) => `<span>${esc(g[0])}${g[2] ? ' (حيوانات)' : ''}</span><span>${g[1] >= 10 ? Math.round(g[1]) : g[1].toFixed(1)}</span>`).join('') + '</div>';
   }
   if (d.today && d.today.length) {
-    html += '<h5>Today</h5><div class="strip">' + d.today.map((a, i) => `<i class="${i === h ? 'cur' : ''}" style="background:${slotColor(a[0])}" title="${String(i).padStart(2, '0')}:00 ${esc(a[1])}"></i>`).join('') + '</div><div class="hours"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>';
+    html += '<h5>اليوم</h5><div class="strip">' + d.today.map((a, i) => `<i class="${i === h ? 'cur' : ''}" style="background:${slotColor(a[0])}" title="${String(i).padStart(2, '0')}:00 ${esc(a[2])}"></i>`).join('') + '</div><div class="hours"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>';
   }
   const f = d.family || {};
-  const fam = [['Spouse', f.spouse ? [f.spouse] : []], ['Father', f.father ? [f.father] : []], ['Mother', f.mother ? [f.mother] : []], ['Children', f.children || []], ['Siblings', f.siblings || []]];
-  html += '<h5>Family</h5><div class="links">' + fam.map(([n, l]) => `<div><span class="sub">${n}:</span> ${l.length ? l.map(link).join('') : '<span class="sub">none</span>'}</div>`).join('') + '</div>';
-  html += `<h5>History (last ${d.history.length})</h5><div id="hist">${d.history.slice().reverse().map((x) => `<div>${esc(x)}</div>`).join('') || '<div class="sub">nothing yet</div>'}</div>`;
+  const fam = [['الزوج', f.spouse ? [f.spouse] : []], ['الأب', f.father ? [f.father] : []], ['الأم', f.mother ? [f.mother] : []], ['الأبناء', f.children || []], ['الإخوة', f.siblings || []]];
+  html += '<h5>العائلة</h5><div class="links">' + fam.map(([n, l]) => `<div><span class="sub">${n}:</span> ${l.length ? l.map(link).join('') : '<span class="sub">لا أحد</span>'}</div>`).join('') + '</div>';
+  html += `<h5>السجل (آخر ${d.history.length})</h5><div id="hist">${d.history.slice().reverse().map((x) => `<div>${esc(x)}</div>`).join('') || '<div class="sub">لا شيء بعد</div>'}</div>`;
   const keep = el.scrollTop;
   el.innerHTML = html;
   el.scrollTop = keep;
@@ -424,7 +424,7 @@ async function loadPerson(id) {
     if (id !== selId) return;
     selData = d;
     renderPanel();
-  } catch (e) { $('panel').hidden = false; $('panel').textContent = 'Person unavailable'; }
+  } catch (e) { $('panel').hidden = false; $('panel').textContent = 'الشخص غير متاح'; }
 }
 function selectPerson(id) {
   if (id !== selId) { selData = null; $('panel').scrollTop = 0; }
@@ -440,7 +440,7 @@ function followStep() {
   if (i < 0) return;
   const target = Math.max(view.scale, view.fit * 4);
   if (view.scale < target) view.scale += (target - view.scale) * 0.2;
-  const px = view.w / 2 - ($('panel').hidden ? 0 : 170), py = view.h / 2;
+  const px = view.w / 2 - ($('panel').hidden ? 0 : -170), py = view.h / 2;
   view.x += (px - (s_cx(i) * view.scale + view.x)) * 0.25;
   view.y += (py - (s_cy(i) * view.scale + view.y)) * 0.25;
 }
@@ -464,11 +464,11 @@ sInput.addEventListener('input', () => {
   const out = [];
   const num = /^\d+$/.test(q) ? parseInt(q, 10) : -1;
   for (const r of peopleRows) {
-    if (r[0] === num || String(r[1]).toLowerCase().includes(q)) { out.push(r); if (out.length >= 8) break; }
+    if (r[0] === num || String(r[1]).toLowerCase().includes(q) || ar(r[1]).includes(q)) { out.push(r); if (out.length >= 8) break; }
   }
   for (const r of out) {
     const d = document.createElement('div');
-    d.textContent = `${r[1]} (#${r[0]}, ${r[4]} y, ${r[5]})`;
+    d.textContent = `${ar(r[1])} (#${r[0]}، ${r[4]} سنة، ${ar(r[5])})`;
     d.onclick = () => { selectPerson(r[0]); sRes.style.display = 'none'; sInput.value = ''; };
     sRes.appendChild(d);
   }
@@ -479,13 +479,13 @@ if (params.has('select')) { selectPerson(parseInt(params.get('select'), 10)); fo
 
 // --- legend ----------------------------------------------------------------------------
 (function buildLegend() {
-  let h = '<h4>People</h4>';
-  GROUPS.forEach((g) => { h += '<div class="row"><span class="dot" style="background:' + g.color + '"></span>' + g.name + '</div>'; });
-  h += '<div class="row"><span class="ring"></span>Ring: women and girls</div>';
-  h += '<div class="row"><span class="dot small" style="background:#ffe08a"></span>Small dot: children</div>';
-  h += '<div class="row"><span class="dot small" style="background:#e8e0c8"></span>Tiny dots: herd animals</div><hr><h4>Valley</h4>';
-  [['#2f7fe0', 'Well'], ['#8fc46a', 'Field'], ['#2e7d32', 'Palm grove'], ['rgba(170,200,100,.7)', 'Pasture'],
-   ['#e0a030', 'Suq'], ['#fafafa', 'Mosque'], ['#8e44ad', 'Majlis'], ['#7a5a2c', 'Caravan road']]
+  let h = '<h4>السكان</h4>';
+  GROUPS.forEach((g) => { h += '<div class="row"><span class="dot" style="background:' + g.color + '"></span>' + ar(g.name) + '</div>'; });
+  h += '<div class="row"><span class="ring"></span>حلقة: النساء والبنات</div>';
+  h += '<div class="row"><span class="dot small" style="background:#ffe08a"></span>نقطة صغيرة: الأطفال</div>';
+  h += '<div class="row"><span class="dot small" style="background:#e8e0c8"></span>نقاط دقيقة: حيوانات القطيع</div><hr><h4>الوادي</h4>';
+  [['#2f7fe0', 'بئر'], ['#8fc46a', 'حقل'], ['#2e7d32', 'نخيل'], ['rgba(170,200,100,.7)', 'مرعى'],
+   ['#e0a030', 'سوق'], ['#fafafa', 'مسجد'], ['#8e44ad', 'مجلس'], ['#7a5a2c', 'طريق القوافل']]
     .forEach((x) => { h += '<div class="row"><span class="dot" style="background:' + x[0] + '"></span>' + x[1] + '</div>'; });
   $('legend').innerHTML = h;
 })();
@@ -517,10 +517,10 @@ function drawLabels() {
   ctx.textAlign = 'center';
   ctx.fillStyle = '#222';
   ctx.font = '600 ' + Math.max(11, Math.min(22, 13 * view.scale / view.fit)) + 'px system-ui, sans-serif';
-  for (const s of map.settlements) ctx.fillText(s.name, s.x * view.scale + view.x, (s.y - s.radius - 8) * view.scale + view.y);
+  for (const s of map.settlements) ctx.fillText(ar(s.name), s.x * view.scale + view.x, (s.y - s.radius - 8) * view.scale + view.y);
   if (view.scale / view.fit > 1.4) {
     ctx.font = '11px system-ui, sans-serif';
-    for (const o of mapPaths.named) ctx.fillText(o[0].replace('_', ' '), o[3] * view.scale + view.x, (o[4] - o[5] - 4) * view.scale + view.y);
+    for (const o of mapPaths.named) ctx.fillText(ar(o[0]), o[3] * view.scale + view.x, (o[4] - o[5] - 4) * view.scale + view.y);
   }
 }
 

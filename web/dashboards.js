@@ -75,7 +75,7 @@ function tickerAdd(e) {
   showTicker(e.text, hot);
 }
 function showTicker(text, hot) {
-  tickerEl.hidden = false; tickerEl.textContent = text; tickerEl.classList.toggle('hot', !!hot);
+  tickerEl.hidden = false; tickerEl.textContent = ar(text); tickerEl.classList.toggle('hot', !!hot);
   clearTimeout(tickerTimer);
   tickerTimer = setTimeout(() => { tickerEl.hidden = true; }, 9000);
 }
@@ -84,10 +84,10 @@ function famineCheck(r) {
   const share = r.hungry / Math.max(1, r.pop);
   if (share > 0.05 && !famine) {
     famine = true;
-    const text = `Day ${r.d}: famine risk, ${r.hungry} people (${Math.round(share * 100)}%) went hungry today`;
+    const text = `اليوم ${r.d}: خطر مجاعة، ${r.hungry} شخصًا (${Math.round(share * 100)}%) جاعوا اليوم`;
     pushAlert(r.d, 'famine', text, true); showTicker(text, true);
   } else if (share <= 0.03) famine = false;
-  if (r.d % 7 === 5 && r.d !== lastJumuah) { lastJumuah = r.d; pushAlert(r.d, 'jumuah', `Day ${r.d}: Jumu'ah, Friday prayer at the mosque`, false); }
+  if (r.d % 7 === 5 && r.d !== lastJumuah) { lastJumuah = r.d; pushAlert(r.d, 'jumuah', `اليوم ${r.d}: الجمعة، صلاة الجمعة في المسجد`, false); }
 }
 
 // --- charts ---------------------------------------------------------------------------------
@@ -129,8 +129,8 @@ function lineChart(canvas, xs, series, opts = {}) {
   const px = (i) => L + (n === 1 ? 0 : (w - L - R) * i / (n - 1));
   const py = (v) => T + (h - T - B) * (1 - (v - lo) / (hi - lo));
   g.textAlign = 'center';
-  g.fillText('day ' + xs[0], L + 12, h - 3);
-  g.fillText('day ' + xs[n - 1], w - R - 18, h - 3);
+  g.fillText('يوم ' + xs[0], L + 12, h - 3);
+  g.fillText('يوم ' + xs[n - 1], w - R - 18, h - 3);
   for (const s of series) {
     g.strokeStyle = s.color; g.lineWidth = s.width || 1.6; g.setLineDash(s.dash || []);
     g.beginPath();
@@ -140,7 +140,7 @@ function lineChart(canvas, xs, series, opts = {}) {
   g.setLineDash([]);
 }
 function chartBox(title, series, id) {
-  return `<div class="chart"><h6>${title}</h6><div class="legendrow">${series.map((s) => `<span><i style="background:${s.color}"></i>${s.label}</span>`).join('')}</div><canvas id="${id}"></canvas></div>`;
+  return `<div class="chart"><h6>${ar(title)}</h6><div class="legendrow">${series.map((s) => `<span><i style="background:${s.color}"></i>${ar(s.label)}</span>`).join('')}</div><canvas id="${id}"></canvas></div>`;
 }
 
 // --- tabs ---------------------------------------------------------------------------------------
@@ -157,7 +157,7 @@ function econ() {
   }
   if (!last) return;
   // same wording and numbers as the console's `world` command
-  $('sum').textContent = `Day ${String(last.d).padStart(4)} | pop ${last.pop} | dirhams ${fmt0(last.money)} (constant OK) | pouches ${fmt0(last.pouches)} / bayt ${fmt0(last.bayt)} | gini ${last.gini.toFixed(3)} | hungry ${last.hungry} thirsty ${last.thirsty} | sick ${last.sick} | wells ${last.wells} | caravans ${last.arrived} (${last.failed} failed)`;
+  $('sum').textContent = `اليوم ${last.d} | السكان ${last.pop} | الدراهم ${fmt0(last.money)} (ثابتة سليمة) | الأكياس ${fmt0(last.pouches)} / بيت المال ${fmt0(last.bayt)} | جيني ${last.gini.toFixed(3)} | جائعون ${last.hungry} عطشى ${last.thirsty} | مرضى ${last.sick} | آبار ${last.wells} | قوافل ${last.arrived} (${last.failed} فاشلة)`;
   lineChart($('c-money'), xs, [
     { color: '#ffffff', data: days.map((r) => r.money), dash: [4, 3] },
     { color: PAL[0], data: days.map((r) => r.pouches) }, { color: PAL[1], data: days.map((r) => r.bayt) },
@@ -187,13 +187,13 @@ function dayStock(i) {   // days of stock left in shops at the recent consumptio
 }
 function market() {
   const days = D.days, n = days.length;
-  if (!n) { dbody.textContent = 'waiting for the first day...'; return; }
+  if (!n) { dbody.textContent = 'بانتظار اليوم الأول...'; return; }
   const last = days[n - 1], prev = days[Math.max(0, n - 8)];
   if (drawnTab !== 'market') {
     let rows = '';
     D.items.forEach((nm, i) => { rows += `<tr data-i="${i}"><td>${esc(nm)}</td><td></td><td></td><td></td><td></td><td></td></tr>`; });
-    dbody.innerHTML = `<div class="split"><div><table class="t" id="mt"><thead><tr><th>Item</th><th>Price</th><th>vs base</th><th>7 d</th><th>Shop stock</th><th>Days of stock</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <div class="chart"><h6 id="mh">Click an item for its price history (last 90 days)</h6><canvas id="c-price" style="height:200px"></canvas></div></div>`;
+    dbody.innerHTML = `<div class="split"><div><table class="t" id="mt"><thead><tr><th>السلعة</th><th>السعر</th><th>مقابل الأساس</th><th>7 أيام</th><th>مخزون الدكاكين</th><th>أيام المخزون</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="chart"><h6 id="mh">اضغط على سلعة لعرض تاريخ سعرها (آخر 90 يومًا)</h6><canvas id="c-price" style="height:200px"></canvas></div></div>`;
     $('mt').querySelectorAll('tbody tr').forEach((tr) => { tr.onclick = () => { selItem = parseInt(tr.dataset.i, 10); drawnVersion = -1; render(); }; });
   }
   const trs = $('mt').querySelectorAll('tbody tr');
@@ -201,7 +201,7 @@ function market() {
     const tr = trs[i], td = tr.children;
     const p = last.price[i];
     const none = p <= 0 && last.stock[i] <= 0;
-    td[1].textContent = p > 0 ? fmt2(p) + ' ' + D.units[i] : '-';
+    td[1].textContent = p > 0 ? fmt2(p) + ' ' + ar(D.units[i]) : '-';
     td[2].textContent = p > 0 && D.base[i] > 0 ? Math.round(p / D.base[i] * 100) + '%' : '-';
     td[3].innerHTML = trend(p, prev.price[i]);
     td[4].textContent = none ? '-' : fmt0(last.stock[i]);
@@ -212,17 +212,17 @@ function market() {
   });
   if (selItem >= 0) {
     const m = days.slice(-90);
-    $('mh').textContent = `${D.items[selItem]}: average price, last ${m.length} days`;
+    $('mh').textContent = `${ar(D.items[selItem])}: متوسط السعر في آخر ${m.length} يومًا`;
     lineChart($('c-price'), m.map((r) => r.d), [{ color: PAL[2], data: m.map((r) => r.price[selItem]) }, { color: '#8a93a6', dash: [4, 3], data: m.map(() => D.base[selItem]) }], { fmt: fmt2 });
   }
 }
 
 function herds() {
   const days = D.days, n = days.length;
-  if (!n) { dbody.textContent = 'waiting for the first day...'; return; }
+  if (!n) { dbody.textContent = 'بانتظار اليوم الأول...'; return; }
   const last = days[n - 1], span = days.slice(-30);
   if (drawnTab !== 'herds') {
-    dbody.innerHTML = `<div class="split"><div><table class="t" id="ht"><thead><tr><th>Animal</th><th>Total</th>${D.tribes.map((t) => `<th>${esc(t.replace('Banu ', ''))}</th>`).join('')}<th>Born 30 d</th><th>Slaughtered 30 d</th></tr></thead><tbody>${D.livestock.map((a, k) => `<tr data-k="${k}"><td>${esc(a)}</td>${'<td></td>'.repeat(D.tribes.length + 3)}</tr>`).join('')}</tbody></table></div>
+    dbody.innerHTML = `<div class="split"><div><table class="t" id="ht"><thead><tr><th>الحيوان</th><th>المجموع</th>${D.tribes.map((t) => `<th>${esc(t)}</th>`).join('')}<th>مواليد 30 يومًا</th><th>مذبوح 30 يومًا</th></tr></thead><tbody>${D.livestock.map((a, k) => `<tr data-k="${k}"><td>${esc(a)}</td>${'<td></td>'.repeat(D.tribes.length + 3)}</tr>`).join('')}</tbody></table></div>
       <div class="chart"><h6 id="hh"></h6><canvas id="c-herd" style="height:200px"></canvas></div></div>`;
     $('ht').querySelectorAll('tbody tr').forEach((tr) => { tr.onclick = () => { selHerd = parseInt(tr.dataset.k, 10); drawnVersion = -1; render(); }; });
   }
@@ -237,24 +237,24 @@ function herds() {
     td[3 + D.tribes.length].textContent = fmt0(s);
     trs[k].classList.toggle('sel', k === selHerd);
   });
-  $('hh').textContent = `${D.livestock[selHerd]}: head count over the last ${days.length} days`;
+  $('hh').textContent = `${ar(D.livestock[selHerd])}: عدد الرؤوس خلال آخر ${days.length} يومًا`;
   lineChart($('c-herd'), days.map((r) => r.d), [{ color: PAL[0], data: days.map((r) => r.ht[selHerd]) }], { zero: true });
 }
 
 function caravansTab() {
   if (drawnTab !== 'caravans') {
-    dbody.innerHTML = `<div class="summary" id="cnow"></div><table class="t"><thead><tr><th>Arrived</th><th>From</th><th>Stay</th><th>Cargo units</th><th>Largest cargo</th><th>Sold to locals</th><th>Bought from locals</th><th>Result</th></tr></thead><tbody id="clog"></tbody></table>`;
+    dbody.innerHTML = `<div class="summary" id="cnow"></div><table class="t"><thead><tr><th>الوصول</th><th>من</th><th>المكث</th><th>وحدات الحمولة</th><th>أكبر حمولة</th><th>بيع للأهالي</th><th>شراء من الأهالي</th><th>النتيجة</th></tr></thead><tbody id="clog"></tbody></table>`;
   }
   const act = liveCaravans.filter((c) => c.state === 'in_valley');
-  $('cnow').textContent = act.length ? 'In the valley now: ' + act.map((c) => `${c.origin} (day ${c.days_in_valley + 1}, purse ${fmt0(c.purse)})`).join('; ')
-    : 'No caravan in the valley. Next: ' + (liveCaravans.length ? liveCaravans.map((c) => `${c.origin} on day ${c.next_arrival_day}`).sort().slice(0, 3).join(', ') : '-');
-  const rows = D.caravans.slice().reverse().map((c) => `<tr><td>day ${c.day}</td><td>${esc(c.origin)}</td><td>${c.stay} d</td><td>${fmt0(c.cargo_units)}</td><td>${esc(c.top)}</td><td>${fmt0(c.sold)}</td><td>${fmt0(c.bought)}</td><td>${c.failed ? '<span class="up">failed: cargo lost</span>' : 'ok'}</td></tr>`).join('');
-  $('clog').innerHTML = rows || '<tr><td colspan="8">no caravan has arrived yet</td></tr>';
+  $('cnow').textContent = act.length ? 'في الوادي الآن: ' + act.map((c) => `${ar(c.origin)} (اليوم ${c.days_in_valley + 1}، الكيس ${fmt0(c.purse)})`).join('؛ ')
+    : 'لا قافلة في الوادي. التالية: ' + (liveCaravans.length ? liveCaravans.map((c) => `${ar(c.origin)} في اليوم ${c.next_arrival_day}`).sort().slice(0, 3).join(', ') : '-');
+  const rows = D.caravans.slice().reverse().map((c) => `<tr><td>اليوم ${c.day}</td><td>${esc(c.origin)}</td><td>${c.stay} أيام</td><td>${fmt0(c.cargo_units)}</td><td>${esc(c.top)}</td><td>${fmt0(c.sold)}</td><td>${fmt0(c.bought)}</td><td>${c.failed ? '<span class="up">فشلت: ضاعت الحمولة</span>' : 'سليمة'}</td></tr>`).join('');
+  $('clog').innerHTML = rows || '<tr><td colspan="8">لم تصل قافلة بعد</td></tr>';
 }
 
 function alertsTab() {
   if (drawnTab !== 'alerts') dbody.innerHTML = '<div id="alist"></div>';
-  $('alist').innerHTML = ALERTS.slice(-150).reverse().map((a) => `<div class="evrow ${a.hot ? 'hot' : ''}"><span class="k">${a.kind}</span>${esc(a.text)}</div>`).join('') || 'nothing yet';
+  $('alist').innerHTML = ALERTS.slice(-150).reverse().map((a) => `<div class="evrow ${a.hot ? 'hot' : ''}"><span class="k">${ar(a.kind)}</span>${esc(a.text)}</div>`).join('') || 'لا شيء بعد';
 }
 
 function render() {
@@ -263,7 +263,7 @@ function render() {
   const fn = { econ, market, herds, caravans: caravansTab, alerts: alertsTab }[dashTab];
   fn();
   drawnTab = dashTab; drawnVersion = dashVersion;
-  $('dash-note').textContent = D.days.length ? `${D.days.length} days of history` : '';
+  $('dash-note').textContent = D.days.length ? `سجل ${D.days.length} يومًا` : '';
 }
 function openDash(v) {
   dashOpen = v; $('dash').hidden = !v;

@@ -1,0 +1,24 @@
+<!doctype html><meta charset="utf-8"><title>Gallery</title>
+<style>body{margin:0;font:13px sans-serif}#hud{position:fixed;top:6px;left:6px;background:#0008;color:#fff;padding:4px 8px;border-radius:4px}#tbl{position:fixed;right:0;top:0;bottom:0;width:260px;overflow:auto;background:#fffe;font-size:11px;padding:4px}</style>
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
+<div id="hud"></div><div id="tbl"></div>
+<script type="module">
+import * as THREE from 'three';
+import { CATALOG, animate } from './buildings.js';
+const q = new URLSearchParams(location.search), night = q.get('night') === '1';
+const r = new THREE.WebGLRenderer({ antialias: false }); r.setSize(innerWidth, innerHeight); document.body.prepend(r.domElement);
+const s = new THREE.Scene(); s.background = new THREE.Color(night ? 0x101830 : 0xe6dcc3);
+s.add(new THREE.HemisphereLight(0xffffff, 0x886644, night ? 0.35 : 1.1)); const dl = new THREE.DirectionalLight(0xffeecc, night ? 0.2 : 1.2); dl.position.set(20, 40, 20); s.add(dl);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshLambertMaterial({ color: 0xc8ae72 })); ground.rotation.x = -Math.PI / 2; s.add(ground);
+const root = new THREE.Group(); s.add(root); const rows = []; let z = 0, tri = 0;
+const tbl = document.getElementById('tbl'); tbl.innerHTML = '<b>Every item: source = procedural code (web3d/buildings.js); textures = tools/gen_textures.py (generated, no third-party licence)</b><ol>';
+CATALOG.forEach(([name, f, n], row) => { const rr = row % 5, cc = Math.floor(row / 5);
+  for (let i = 0; i < n; i++) { const o = f(i); o.position.set(rr * 22 + i * 6 - 40, 0, cc * 14 - 20); root.add(o); o.traverse(m => { if (m.geometry) tri += (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3; }); }
+  tbl.innerHTML += '<li>' + name + ' &mdash; procedural, project licence</li>'; });
+const cam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.5, 1000); cam.position.set(15, 60, 45); cam.lookAt(15, 0, -5);
+let f = 0, t0 = performance.now(), last = t0, fps = 0, js = 0;
+function loop(now) { const a = performance.now(); animate(root, now / 1000, night); r.render(s, cam); js += performance.now() - a; f++;
+  if (now - t0 > 1000) { fps = f * 1000 / (now - t0); window.__bench = { fps: +fps.toFixed(1), jsMs: +(js / f).toFixed(2), tris: Math.round(tri), items: root.children.length }; document.getElementById('hud').textContent = `${root.children.length} items | ${fps.toFixed(1)} fps (software GL if headless) | ${Math.round(tri / 1000)}k tris`; f = 0; js = 0; t0 = now; }
+  requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+</script>

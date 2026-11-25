@@ -41,3 +41,6 @@ Playground: `python3 -m http.server 8000 --directory web3d`, then http://localho
 
 ## Crowd demo (issue #14)
 `web3d/crowd.html?people=3000&animals=1500&lod=40&dist=90`: vertex-animation textures baked at load from the Quaternius FBX (CC0, listed above), instanced with two LODs. Software-GL measurement (1 vCPU, no GPU, NOT representative): 3000+1500 = 11.4 fps, JS 3.8 ms/frame, 5.8M tris. 30 fps on real hardware is unverified.
+
+## Buildings and props (issue #15)
+`web3d/buildings.js` + `web3d/gallery.html`: 18 procedural types (tent, house, mosque, majlis, stall, well, channel, mill, oven, smithy, salt pan, field, palm, acacia, granary, road, flag, lantern), 35 instances. Source: code in this repo (three.js primitives); textures from `tools/gen_textures.py`. No third-party asset was used, so no extra licence. Measured gallery: 3.3k tris, 24.6 fps in software GL (1 vCPU, no GPU, not representative).

@@ -25,6 +25,7 @@
 #include "money.hpp"
 #include "person.hpp"
 #include "activity.hpp"
+#include "map.hpp"
 #include "http_server.hpp"
 #include "snapshot.hpp"
 #include "stock.hpp"
@@ -592,6 +593,121 @@ int main() {
             for (auto& a : row)
                 labels = labels && a.name[0] && a.en[0] && a.ar[0];
         check(labels, "every activity has name, English and Arabic labels", "all slots");
+    }
+
+    // -- T17: the valley map (issue 5) ----------------------------------------------
+    {
+        char buf[240];
+        std::string json_a, json_b, json_other;
+        size_t n_objects = 0;
+        bool no_overlap = true, in_bounds = true, counts_ok = true, pos_ok = true;
+        std::string counts_detail, overlap_detail;
+        {
+            World w(1000, 33, 1.0, data);
+            for (int d = 0; d < 5; ++d) w.step();
+            const uint64_t h0 = w.state_hash();
+            const auto rng0 = RNG;
+            ValleyMap m = build_map(w);
+            ValleyMap m2 = build_map(w);
+            json_a = json_valley_map(m);
+            json_b = json_valley_map(m2);
+            n_objects = m.objects.size();
+            // overlap: every pair of objects is at least r1 + r2 apart
+            double worst = 1e9;
+            for (size_t i = 0; i < m.objects.size(); ++i) {
+                const auto& a = m.objects[i];
+                if (a.x - a.r < 0 || a.x + a.r > MAP_W || a.y - a.r < 0 || a.y + a.r > MAP_H) in_bounds = false;
+                for (size_t j = i + 1; j < m.objects.size(); ++j) {
+                    const auto& b2 = m.objects[j];
+                    const double gap = std::hypot(a.x - b2.x, a.y - b2.y) - a.r - b2.r;
+                    worst = std::min(worst, gap);
+                    if (gap < 0) no_overlap = false;
+                }
+            }
+            std::snprintf(buf, sizeof buf, "%zu objects, smallest gap %.2f units, all inside %.0fx%.0f",
+                          n_objects, worst, MAP_W, MAP_H);
+            check(no_overlap && in_bounds, "map objects do not overlap", buf);
+            // counts match the simulation
+            auto cnt = [&](MapKind k) { return m.of(k).size(); };
+            counts_ok = cnt(MapKind::Well) == w.wells.size() && cnt(MapKind::Field) == w.fields.size() &&
+                        cnt(MapKind::Shop) == w.shops.size() && cnt(MapKind::Grove) == w.groves.size() &&
+                        m.settlements.size() == w.tribe_names.size() &&
+                        cnt(MapKind::Gate) == w.tribe_names.size();
+            std::snprintf(buf, sizeof buf, "wells %zu/%zu fields %zu/%zu shops %zu/%zu groves %zu/%zu tribes %zu/%zu",
+                          cnt(MapKind::Well), w.wells.size(), cnt(MapKind::Field), w.fields.size(),
+                          cnt(MapKind::Shop), w.shops.size(), cnt(MapKind::Grove), w.groves.size(),
+                          m.settlements.size(), w.tribe_names.size());
+            check(counts_ok, "map counts match the simulation", buf);
+            // every person gets a point inside the map for every zone; own home/field are stable
+            size_t checked = 0;
+            for (const auto& p : w.people) {
+                if (!p.alive) continue;
+                for (int z = 0; z < static_cast<int>(Zone::Count_); ++z) {
+                    Pt q = position_of(w, m, p, static_cast<Zone>(z));
+                    Pt q2 = position_of(w, m, p, static_cast<Zone>(z));
+                    if (!(q.x >= 0 && q.x <= MAP_W && q.y >= 0 && q.y <= MAP_H) || q.x != q2.x || q.y != q2.y)
+                        pos_ok = false;
+                    ++checked;
+                }
+            }
+            // a field owner stands on his own field; spouses share a home
+            int owners_ok = 0, owners = 0, couples = 0, couples_ok = 0;
+            for (size_t f = 0; f < w.fields.size(); ++f) {
+                const Person* o = w.find_person(w.fields[f].owner);
+                if (!o) continue;
+                ++owners;
+                Pt q = position_of(w, m, *o, Zone::Field);
+                const MapObject& fo = m.objects[static_cast<size_t>(m.of(MapKind::Field)[f])];
+                if (q.x == fo.x && q.y == fo.y) ++owners_ok;
+            }
+            for (const auto& p : w.people)
+                if (p.alive && p.spouse > p.id) {
+                    const Person* s = w.find_person(p.spouse);
+                    if (!s || !s->alive) continue;
+                    ++couples;
+                    Pt a = position_of(w, m, p, Zone::Home), b2 = position_of(w, m, *s, Zone::Home);
+                    if (a.x == b2.x && a.y == b2.y) ++couples_ok;
+                }
+            std::snprintf(buf, sizeof buf, "%zu positions in bounds; owners on own field %d/%d; couples share a home %d/%d",
+                          checked, owners_ok, owners, couples_ok, couples);
+            check(pos_ok && owners_ok == owners && couples_ok == couples, "position_of is stable and sensible", buf);
+            check(h0 == w.state_hash() && RNG == rng0, "map is read-only",
+                  "world hash and simulation RNG unchanged");
+            // a new well appears, everything else stays where it was
+            w.wells.push_back(w.wells[0]);
+            ValleyMap m3 = build_map(w);
+            bool prefix = m3.objects.size() == m.objects.size() + 1;
+            for (size_t i = 0; prefix && i < m.objects.size(); ++i)
+                prefix = m.objects[i].x == m3.objects[i].x && m.objects[i].y == m3.objects[i].y &&
+                         m.objects[i].kind == m3.objects[i].kind;
+            std::snprintf(buf, sizeof buf, "wells %zu -> %zu, all %zu earlier objects unmoved",
+                          m.of(MapKind::Well).size(), m3.of(MapKind::Well).size(), m.objects.size());
+            check(prefix && m3.of(MapKind::Well).size() == m.of(MapKind::Well).size() + 1,
+                  "a newly dug well appears on the map", buf);
+            w.wells.pop_back();
+        }
+        { World w(1000, 33, 1.0, data); json_other = json_valley_map(build_map(w)); }
+        { World w(1000, 34, 1.0, data); std::string other = json_valley_map(build_map(w));
+          std::snprintf(buf, sizeof buf, "seed 33 twice identical (%zu bytes), seed 34 differs", json_a.size());
+          check(json_a == json_b && json_a == json_other && json_a != other && json_ok(json_a),
+                "same seed gives the same map", buf); }
+        // a big world still has no overlap
+        {
+            World w(3000, 5, 1.0, data);
+            ValleyMap m = build_map(w);
+            bool ok = true;
+            double worst = 1e9;
+            for (size_t i = 0; i < m.objects.size(); ++i)
+                for (size_t j = i + 1; j < m.objects.size(); ++j) {
+                    const auto& a = m.objects[i];
+                    const auto& b2 = m.objects[j];
+                    const double gap = std::hypot(a.x - b2.x, a.y - b2.y) - a.r - b2.r;
+                    worst = std::min(worst, gap);
+                    if (gap < 0) ok = false;
+                }
+            std::snprintf(buf, sizeof buf, "3000 people: %zu objects, smallest gap %.2f", m.objects.size(), worst);
+            check(ok, "no overlap with 3000 people", buf);
+        }
     }
 
     std::printf("\n%s (%d failure%s)\n", failures == 0 ? "ALL TESTS PASSED" : "FAILURES",

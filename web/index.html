@@ -1,49 +1,50 @@
 <!doctype html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
 <link rel="icon" href="data:,">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tribes of the Valley</title>
+<title>قبائل الوادي</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header id="bar">
-  <div class="cell"><span class="lbl">Day</span><b id="day">-</b></div>
+  <div class="cell"><span class="lbl">اليوم</span><b id="day">-</b></div>
   <div class="cell"><span id="sky">&#9728;</span><b id="clock">--:--</b></div>
-  <div class="cell"><span class="lbl">Season</span><b id="season">-</b></div>
-  <div class="cell"><span class="lbl">People</span><b id="pop">-</b></div>
+  <div class="cell"><span class="lbl">الموسم</span><b id="season">-</b></div>
+  <div class="cell"><span class="lbl">السكان</span><b id="pop">-</b></div>
   <div class="cell speed" id="speed">
-    <button data-s="pause" title="Pause">&#10074;&#10074;</button>
-    <button data-s="1">1x</button><button data-s="2">2x</button>
-    <button data-s="5">5x</button><button data-s="10">10x</button>
+    <button data-s="pause" title="إيقاف مؤقت">&#10074;&#10074;</button>
+    <button data-s="1">×1</button><button data-s="2">×2</button>
+    <button data-s="5">×5</button><button data-s="10">×10</button>
   </div>
   <div class="cell filters">
-    <select id="f-tribe" title="Tribe"><option value="-1">All tribes</option></select>
-    <select id="f-group" title="Role group"><option value="-1">All roles</option></select>
-    <select id="f-act" title="Activity"><option value="">All activities</option></select>
-    <label><input type="checkbox" id="labels" checked> Labels</label>
-    <label><input type="checkbox" id="animals" checked> Animals</label>
+    <select id="f-tribe" title="القبيلة"><option value="-1">كل القبائل</option></select>
+    <select id="f-group" title="فئة المهنة"><option value="-1">كل المهن</option></select>
+    <select id="f-act" title="النشاط"><option value="">كل الأنشطة</option></select>
+    <label><input type="checkbox" id="labels" checked> الأسماء</label>
+    <label><input type="checkbox" id="animals" checked> الحيوانات</label>
   </div>
-  <div class="cell right"><span id="status">connecting...</span></div>
+  <div class="cell right"><span id="status">جارٍ الاتصال...</span></div>
 </header>
 <main>
   <canvas id="view"></canvas>
-  <div id="searchbox"><input id="search" type="search" placeholder="Find by name or id" autocomplete="off"><div id="results"></div> <button id="dash-btn" title="Economy, market, herds, caravans, alerts">Dashboards</button></div>
+  <div id="searchbox"><input id="search" type="search" placeholder="ابحث بالاسم أو الرقم" autocomplete="off"><div id="results"></div> <button id="dash-btn" title="الاقتصاد والسوق والقطعان والقوافل والتنبيهات">لوحات المتابعة</button></div>
   <div id="ticker" hidden></div>
 
   <div id="zoom">
-    <button id="z-in" title="Zoom in">+</button>
-    <button id="z-out" title="Zoom out">&minus;</button>
-    <button id="z-fit" title="Fit the valley">&#9635;</button>
+    <button id="z-in" title="تكبير">+</button>
+    <button id="z-out" title="تصغير">&minus;</button>
+    <button id="z-fit" title="عرض الوادي كله">&#9635;</button>
   </div>
   <aside id="legend"></aside>
   <aside id="panel" hidden></aside>
   <section id="dash" hidden>
-    <nav id="tabs"><button data-t="econ" class="on">Economy</button><button data-t="market">Market</button><button data-t="herds">Herds</button><button data-t="caravans">Caravans</button><button data-t="alerts">Alerts</button><span id="dash-note"></span><button id="dash-x" title="Close">&times;</button></nav>
+    <nav id="tabs"><button data-t="econ" class="on">الاقتصاد</button><button data-t="market">السوق</button><button data-t="herds">القطعان</button><button data-t="caravans">القوافل</button><button data-t="alerts">التنبيهات</button><span id="dash-note"></span><button id="dash-x" title="إغلاق">&times;</button></nav>
     <div id="dash-body"></div>
   </section>
 </main>
+<script src="i18n.js"></script>
 <script src="viewer.js"></script>
 <script src="dashboards.js"></script>
 </body>

@@ -111,7 +111,7 @@ terminal; with a terminal you can leave it out and use the console commands.
 If port 8080 is taken, use another port in both places. The page is a 2D
 map of the valley with every person as a dot, a person side panel (click a
 dot), and dashboards. See the viewer, activity layer and dashboards notes in
-the API section above. CI (`.github/workflows/ci.yml`) builds, runs
+the API section above. CI (`.github/workflows/ci.yml` (kept as `docs/ci.yml` until a token with the workflow scope can add it)) builds, runs
 `tests/run_tests`, starts a 300-person server and runs `tests/smoke_api.sh`
 on every push and pull request.
 

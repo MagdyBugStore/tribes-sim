@@ -195,6 +195,9 @@ struct World {
     std::mutex lock;
     std::atomic<bool> stop{false};
     std::atomic<bool> paused{false};
+    // Steady-clock milliseconds when the last day finished (live mode only;
+    // 0 = no step yet). Lets the viewer play the day over tick_interval.
+    std::atomic<long long> last_step_ms{0};
 
     // Helpers.
     bool allied(int a, int b) const {

@@ -44,6 +44,12 @@ Snapshot take_snapshot(World& w, long long* lock_micros) {
         s.season = season_of(s.day_of_year);
         s.seconds_per_day = w.tick_interval;
         s.paused = w.paused.load();
+        {
+            const long long last = w.last_step_ms.load();
+            const long long now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now().time_since_epoch()).count();
+            s.since_step_ms = last > 0 ? std::max(0LL, now_ms - last) : 0;
+        }
         s.births = w.births_total;
         s.deaths = w.deaths_total;
         s.money_supply = total_money(w);
@@ -233,6 +239,7 @@ std::string json_state(const Snapshot& s) {
     j.key("season"); j.str(s.season); j.raw(",");
     j.key("seconds_per_day"); j.num(s.seconds_per_day); j.raw(",");
     j.key("paused"); j.boolean(s.paused); j.raw(",");
+    j.key("since_step_ms"); j.integer(s.since_step_ms); j.raw(",");
     j.key("population"); j.integer(s.population); j.raw(",");
     j.key("births"); j.integer(s.births); j.raw(",");
     j.key("deaths"); j.integer(s.deaths); j.raw(",");

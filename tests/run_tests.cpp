@@ -27,6 +27,7 @@
 #include "activity.hpp"
 #include "map.hpp"
 #include "http_server.hpp"
+#include "schedules_api.hpp"
 #include "snapshot.hpp"
 #include "stock.hpp"
 #include "world.hpp"
@@ -462,6 +463,18 @@ int main() {
         std::snprintf(buf, sizeof buf, "hash %016llx -> %016llx",
                       (unsigned long long)before, (unsigned long long)after);
         check(before == after, "snapshot leaves world unchanged", buf);
+        {
+            ValleyMap vmap = build_map(w);
+            long long us = 0;
+            const uint64_t h0 = w.state_hash();
+            const std::string sj = json_schedules(w, vmap, w.tick, &us);
+            const bool same_hash = w.state_hash() == h0;
+            std::snprintf(buf, sizeof buf, "%zu bytes, %lld us, hash unchanged: %s", sj.size(), us,
+                          same_hash ? "yes" : "no");
+            check(json_ok(sj) && same_hash && sj.size() < 600 * 1024 &&
+                      sj.find("\"day\"") != std::string::npos,
+                  "schedules API JSON is valid, small and read-only", buf);
+        }
         const std::string people = json_people(s, false, 0);
         std::snprintf(buf, sizeof buf, "%d people, %zu bytes (limit 409600), lock held %lld us",
                       s.population, people.size(), lock_us);

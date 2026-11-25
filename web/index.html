@@ -1,5 +1,41 @@
 <!doctype html>
+<html lang="en">
+<head>
+<link rel="icon" href="data:,">
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tribes of the Valley</title>
-<h1>Tribes of the Valley</h1>
-<p>The live viewer is built in later issues. The API is up: <a href="/api/state">/api/state</a>.</p>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header id="bar">
+  <div class="cell"><span class="lbl">Day</span><b id="day">-</b></div>
+  <div class="cell"><span id="sky">&#9728;</span><b id="clock">--:--</b></div>
+  <div class="cell"><span class="lbl">Season</span><b id="season">-</b></div>
+  <div class="cell"><span class="lbl">People</span><b id="pop">-</b></div>
+  <div class="cell speed" id="speed">
+    <button data-s="pause" title="Pause">&#10074;&#10074;</button>
+    <button data-s="1">1x</button><button data-s="2">2x</button>
+    <button data-s="5">5x</button><button data-s="10">10x</button>
+  </div>
+  <div class="cell filters">
+    <select id="f-tribe" title="Tribe"><option value="-1">All tribes</option></select>
+    <select id="f-group" title="Role group"><option value="-1">All roles</option></select>
+    <select id="f-act" title="Activity"><option value="">All activities</option></select>
+    <label><input type="checkbox" id="labels" checked> Labels</label>
+    <label><input type="checkbox" id="animals" checked> Animals</label>
+  </div>
+  <div class="cell right"><span id="status">connecting...</span></div>
+</header>
+<main>
+  <canvas id="view"></canvas>
+  <div id="zoom">
+    <button id="z-in" title="Zoom in">+</button>
+    <button id="z-out" title="Zoom out">&minus;</button>
+    <button id="z-fit" title="Fit the valley">&#9635;</button>
+  </div>
+  <aside id="legend"></aside>
+</main>
+<script src="viewer.js"></script>
+</body>
+</html>

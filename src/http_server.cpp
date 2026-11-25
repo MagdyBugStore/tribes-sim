@@ -16,6 +16,7 @@
 #include <sstream>
 
 #include "map.hpp"
+#include "schedules_api.hpp"
 #include "snapshot.hpp"
 
 namespace tribes {
@@ -219,6 +220,34 @@ HttpResponse handle_request(World& w, const HttpRequest& req,
         r.body = json_herds(take_snapshot(w));
     } else if (path == "/api/caravans") {
         r.body = json_caravans(take_snapshot(w));
+    } else if (path == "/api/schedules") {
+        // One day's schedules for everyone, built once per day and cached.
+        static std::string cached_s;
+        static int cached_day = -1;
+        static uint64_t cached_key = 0;
+        MapInputs in = take_map_inputs(w);
+        static ValleyMap vm;
+        static size_t vm_wells = static_cast<size_t>(-1);
+        static uint64_t vm_seed = 0;
+        if (vm_wells != in.well_tribes.size() || vm_seed != in.seed) {
+            vm = build_map(in);
+            vm_wells = in.well_tribes.size();
+            vm_seed = in.seed;
+        }
+        int day = 0;
+        {
+            std::lock_guard<std::mutex> g(w.lock);
+            day = w.tick;
+        }
+        int asked = day;
+        if (query_int(query, "day", &asked) && asked != day) day = asked;
+        const uint64_t key = in.seed * 1000003ULL + in.well_tribes.size();
+        if (cached_day != day || cached_key != key || cached_s.empty()) {
+            cached_s = json_schedules(w, vm, day);
+            cached_day = day;
+            cached_key = key;
+        }
+        r.body = cached_s;
     } else if (path == "/api/map") {
         // The layout is built once and cached; it is rebuilt only when the
         // simulation digs a new well (the server runs on one thread).

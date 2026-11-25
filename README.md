@@ -45,6 +45,7 @@ continues until the simulation ends. Endpoints (JSON, UTF-8, no CORS headers):
 | `GET /api/state` | day, season, seconds per day, paused flag, population, births, deaths, money supply, Gini, tribes |
 | `GET /api/people?since=<day>` | living people as `{fields:[...], rows:[[...]]}`; `since` keeps people born on or after that day |
 | `GET /api/person/<id>` | full detail, family, last 60 history lines |
+| `GET /api/schedules?day=<d>` | every living person's 24 hourly slots with map positions for one day (about 280 KB for 3,000 people, built once per day and cached; `/api/people` carries no positions) |
 | `GET /api/market`, `/api/herds`, `/api/caravans`, `/api/map` | shop prices per good, herd counts per tribe, caravan states, settlements and their zones |
 | `POST /api/control` | `{"action":"pause"}`, `{"action":"resume"}`, `{"action":"speed","value":seconds}` |
 | `GET /` and `/<file>` | static files from `web/` (`..` and escapes get 403/404) |
@@ -73,6 +74,18 @@ moving anything else. `position_of(world, map, person, zone)` gives a stable
 spot (own home, own field, tribe well...). `GET /api/map` returns the layout
 once (cached). `./tribes --print-map FILE.svg` draws it; see
 `docs/valley-map.svg` (1,000 people, seed 42).
+
+Viewer (`web/index.html`, `style.css`, `viewer.js`, no dependencies): open
+`http://127.0.0.1:PORT/` while `--serve` runs. A 2D canvas draws the valley
+map and every person as a dot coloured by role group (ring = women and girls,
+small dot = child, tiny dots = herd animals). People move between the hourly
+stops of their schedule; the sky darkens at night. Controls: pause, 1x / 2x /
+5x / 10x (24 / 12 / 4.8 / 2.4 seconds per day), tribe, role and activity
+filters, labels and animals toggles, legend, mouse-wheel zoom and drag pan.
+The viewer polls `/api/state` every 0.5 s, `/api/people` every 2 s and
+`/api/schedules` once per day. `?hour=H` freezes the clock at hour H (used
+for the screenshots in `docs/viewer-*.png`). Tested in headless Chrome only;
+Firefox was not available.
 
 Console commands while running: `person <id>`, `family <id>`,
 `status`, `history <id>`, `schedule <id> [day]`, `activity [hour]`, `world`, `top`, `economy`, `tribes`, `market`,

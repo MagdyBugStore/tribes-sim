@@ -8,11 +8,11 @@ import * as B from './buildings.js';
 const q = new URLSearchParams(location.search), API = q.get('api') || '', replay = q.get('replay');
 // data source: live API, or a JSON-lines replay file: {"type":"map","data":{..}} / {"type":"people","data":{..}} per line
 async function load() {
-  if (replay) { const lines = (await (await fetch(replay)).text()).trim().split('\n').map(JSON.parse); return { map: lines.find(l => l.type === 'map').data, peopleFrames: lines.filter(l => l.type === 'people').map(l => l.data) }; }
-  const [map, pe] = await Promise.all([fetch(API + '/api/map').then(r => r.json()), fetch(API + '/api/people').then(r => r.json())]);
-  return { map, peopleFrames: [pe], live: true };
+  if (replay) { const lines = (await (await fetch(replay)).text()).trim().split('\n').map(JSON.parse); return { map: lines.find(l => l.type === 'map').data, peopleFrames: lines.filter(l => l.type === 'people').map(l => l.data), sch: (lines.find(l => l.type === 'schedules') || {}).data }; }
+  const [map, pe, sch] = await Promise.all([fetch(API + '/api/map').then(r => r.json()), fetch(API + '/api/people').then(r => r.json()), fetch(API + '/api/schedules').then(r => r.json())]);
+  return { map, peopleFrames: [pe], sch, live: true };
 }
-const { map, peopleFrames, live } = await load();
+const { map, peopleFrames, live, sch } = await load();
 const S = 0.1; // world metres -> scene units (map is 2000x1400)
 const r = new THREE.WebGLRenderer(); r.setSize(innerWidth, innerHeight); document.body.prepend(r.domElement);
 const sc = new THREE.Scene(); const night = q.get('night') === '1'; const hour = +(q.get('hour') ?? 12);
@@ -27,15 +27,24 @@ const rnd = (() => { let a = 7; return () => ((a = (a * 9301 + 49297) % 233280) 
 const counts = {}; const zonePos = {}; const SC = 0.25; // building scale vs world metre
 const mk = { home: (o, i) => (o[1] === 0 ? B.house(i % 3) : B.tent(i % 3)), mosque: () => B.mosque(), majlis: () => B.majlis(), suq: () => B.stall(1, 1), shop: (o, i) => B.stall(i, 0.6), well: () => B.well(0.7), field: () => B.field(0.6), grove: (o, i) => B.palm(i % 3), pasture: (o, i) => B.acacia(i % 3), mill: () => B.mill(), oven: () => B.oven(), smithy: () => B.smithy(), salt_pan: () => B.saltPan(0.7), bayt_al_mal: () => B.granary(0.6), school: () => B.house(1), clinic: () => B.house(0), dairy: () => B.house(2), loom: () => B.house(0), tannery: () => B.house(1), caravanserai: () => B.majlis(), gate: () => B.flag() };
 map.objects.forEach((o, i) => { const k = o[0]; counts[k] = (counts[k] || 0) + 1; (zonePos[k] ||= []).push(o);
-  const f = mk[k]; if (!f) return; const g = f(o, i); const [x, z] = P(o[3], o[4]); g.position.set(x, 0, z); g.rotation.y = rnd() * 6.28; g.scale.setScalar((k === 'home' ? (o[1] === 0 ? 0.28 : 0.6) : SC * 3) * (0.85 + rnd() * 0.3)); sc.add(g); });
+  const f = mk[k]; if (!f) return; const g = f(o, i); const [x, z] = P(o[3], o[4]); g.position.set(x, 0, z); g.rotation.y = rnd() * 6.28; g.scale.setScalar((k === 'home' ? (o[1] === 0 ? 0.28 : 0.3) : SC * 3) * (0.85 + rnd() * 0.3)); sc.add(g); });
 // people as instanced dots placed at their zone object (hash by id); live = current API frame, hour from ?hour
 const frame = peopleFrames[Math.min(peopleFrames.length - 1, +(q.get('frame') ?? 0))]; const F = frame.fields, rows = frame.rows;
 const iZone = F.indexOf('zone'), iAct = F.indexOf('activity'), iTribe = F.indexOf('tribe'), iRole = F.indexOf('role');
 const ZK = { home: 'home', mosque: 'mosque', well: 'well', school: 'school', field: 'field', pasture: 'pasture', suq: 'suq', shop: 'shop', oven: 'oven', mill: 'mill', smithy: 'smithy', majlis: 'majlis', desert: null };
-const dots = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.25, 0.8, 2, 6), new THREE.MeshLambertMaterial({ color: 0xffffff }), rows.length); const tmp = new THREE.Object3D(); const zc = {};
+let dots = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.25, 0.8, 2, 6), new THREE.MeshLambertMaterial({ color: 0xffffff }), rows.length); const tmp = new THREE.Object3D(); const zc = {};
 rows.forEach((p, i) => { const z = p[iZone] || 'home'; zc[z] = (zc[z] || 0) + 1; const kind = ZK[z] ?? null; const pool = kind ? (zonePos[kind] || []).filter(o => kind !== 'home' || o[1] === p[iTribe]) : null; let x, y; if (pool && pool.length) { const o = pool[(i * 2654435761 >>> 0) % pool.length]; x = o[3] + (rnd() - 0.5) * o[5] * 0.8; y = o[4] + (rnd() - 0.5) * o[5] * 0.8; } else { const s = map.settlements[p[iTribe]] || map.settlements[0]; x = s.x + (rnd() - 0.5) * 400; y = s.y + (rnd() - 0.5) * 400; }
   tmp.position.set(x * S, 0.6, y * S); tmp.scale.setScalar(3); tmp.updateMatrix(); dots.setMatrixAt(i, tmp.matrix); dots.setColorAt(i, new THREE.Color(p[iTribe] ? 0x3a6fd8 : 0xd8553a)); });
 sc.add(dots);
+// 24h movement from /api/schedules: person = [id,tribe,gender,age,roleIdx,[x,y,...stops],slotSeq,actSeq]; slot char -> stop index
+const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+let ids = rows.map(p => p[0]), simHour = +(q.get('hour') ?? 12), animate = q.get('anim') !== '0' && !q.has('hour'), speedH = +(q.get('hps') ?? 0.5); // game hours per real second
+const SP = sch ? sch.people : null;
+if (SP) { sc.remove(dots); dots = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.25, 0.8, 2, 6), new THREE.MeshLambertMaterial({ color: 0xffffff }), SP.length); SP.forEach((p, i) => dots.setColorAt(i, new THREE.Color(p[1] ? 0x3a6fd8 : 0xd8553a))); ids = SP.map(p => p[0]); sc.add(dots); }
+const stopAt = (p, h) => { const k = ALPHA.indexOf(p[6][((h % 24) + 24) % 24 | 0]); return [p[5][k * 2], p[5][k * 2 + 1]]; };
+function updatePeople() { if (!SP) return; const h0 = Math.floor(simHour) % 24, f = simHour - Math.floor(simHour), zz = {};
+  SP.forEach((p, i) => { const a = stopAt(p, h0), b = stopAt(p, h0 + 1); const t = Math.min(1, f * 3); const x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t; const moving = a[0] !== b[0] || a[1] !== b[1]; tmp.position.set(x * S, 0.6 + (moving ? Math.abs(Math.sin(simHour * 200 + i)) * 0.15 : 0), y * S); tmp.scale.setScalar(2.5); tmp.updateMatrix(); dots.setMatrixAt(i, tmp.matrix); });
+  dots.instanceMatrix.needsUpdate = true; window.__sim = { hour: +simHour.toFixed(2) }; }
 const cam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.5, 2000); const s0 = map.settlements[0]; const cx = +(q.get('cx') ?? s0.x) * S, cz = +(q.get('cz') ?? s0.y) * S, h = +(q.get('h') ?? 50);
 cam.position.set(cx, h, cz + h * 0.9); cam.lookAt(cx, 0, cz);
 const c = counts; document.getElementById('hud').textContent = `سكان ${rows.length} | بيوت ${c.home || 0} | آبار ${c.well || 0} | حقول ${c.field || 0} | محلات ${c.shop || 0} | الساعة ${hour}:00 | ${live ? 'بث حي' : 'إعادة تشغيل'}`;
@@ -56,13 +65,16 @@ window.__dotpos = () => { const m = new THREE.Matrix4(); dots.getMatrixAt(0, m);
 // picking a person -> side panel from /api/person/ID (same data as the console person command)
 const ray = new THREE.Raycaster(); const sd = document.getElementById('side'); let followId = null;
 const bar = (n, v) => `${n} <b>${Math.round(v)}</b><div class="bar"><i style="width:${Math.max(0, Math.min(100, v))}%"></i></div>`;
-async function pick(e) { const m = new THREE.Vector2(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(m, cam); ray.params.Points = {}; const hit = ray.intersectObject(dots)[0]; if (!hit || hit.instanceId == null) return; const id = rows[hit.instanceId][0]; followId = id; await showPerson(id); }
-async function showPerson(id) { if (live === undefined) return; const p = await fetch(API + '/api/person/' + id).then(r => r.json()); const n = p.needs || {};
-  sd.style.display = 'block'; sd.innerHTML = `<h3>${p.name}</h3>العمر ${p.age} | ${p.stage} | ${p.role} | قبيلة ${p.tribe}<br>النشاط: ${p.activity ?? '-'} (${p.zone ?? '-'})<br>المال: ${p.pouch}<hr>` + bar('الجوع', n.hunger) + bar('العطش', n.thirst) + bar('الطاقة', n.energy) + bar('الصحة', n.health) + bar('السعادة', n.happiness) + `<hr>جدول اليوم: ${(p.today || []).map(a => a[2]).join(' ← ')}<hr><small>العائلة: ${JSON.stringify(p.family || {})}</small>`; }
+async function pick(e) { const m = new THREE.Vector2(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(m, cam); ray.params.Points = {}; const hit = ray.intersectObject(dots)[0]; if (!hit || hit.instanceId == null) return; const id = ids[hit.instanceId]; followId = id; await showPerson(id); }
+const nm = x => x ? x.name : '-';
+async function showPerson(id) { if (live === undefined) return; const p = await fetch(API + '/api/person/' + id).then(r => r.json()); const n = p.needs || {}, fm = p.family || {};
+  const runs = []; (p.today || []).forEach((a, hr) => { const l = runs[runs.length - 1]; if (l && l.n === a[2]) l.e = hr; else runs.push({ n: a[2], s: hr, e: hr }); });
+  sd.style.display = 'block'; sd.innerHTML = `<h3>${p.name}</h3>العمر ${p.age} | ${p.stage} | ${p.role} | قبيلة ${p.tribe}<br>النشاط: ${p.activity ?? '-'} (${p.zone ?? '-'})<br>المال: ${p.pouch}<hr>` + bar('الجوع', n.hunger) + bar('العطش', n.thirst) + bar('الطاقة', n.energy) + bar('الصحة', n.health) + bar('السعادة', n.happiness) + `<hr><b>جدول اليوم</b><br>` + runs.map(r => `${r.s}-${r.e + 1}h ${r.n}`).join('<br>') + `<hr><b>العائلة</b><br>الزوج/ة: ${nm(fm.spouse)}<br>الأب: ${nm(fm.father)} | الأم: ${nm(fm.mother)}<br>الأبناء: ${(fm.children || []).map(nm).join('، ') || '-'}<br>الإخوة: ${(fm.siblings || []).map(nm).join('، ') || '-'}`; }
 // top bar: day/season/population/speed from /api/state; speed via /api/control
 async function bar2() { try { const s = await fetch(API + '/api/state').then(r => r.json()); document.getElementById('st').textContent = `اليوم ${s.day} | الفصل ${s.season} | السكان ${s.population}${s.paused ? ' | متوقف' : ''}`; } catch (e) {} }
 bar2(); setInterval(bar2, 3000);
 const ctl = b => fetch(API + '/api/control', { method: 'POST', body: JSON.stringify(b) }).catch(() => {});
 document.querySelectorAll('#top button').forEach(b => b.onclick = async () => { const k = +b.dataset.s; if (k === 0) return ctl({ action: 'pause' }); await ctl({ action: 'speed', value: 20 / k }); ctl({ action: 'resume' }); });
-function loop() { const sp = dist * 0.01; if (document.getElementById('fl').checked) { const f = new THREE.Vector3(); cam.getWorldDirection(f); if (keys.w) tgt.addScaledVector(f, sp); if (keys.s) tgt.addScaledVector(f, -sp); const rt = new THREE.Vector3().crossVectors(f, cam.up); if (keys.d) tgt.addScaledVector(rt, sp); if (keys.a) tgt.addScaledVector(rt, -sp); place(); } r.render(sc, cam); requestAnimationFrame(loop); } loop();
+let lastT = performance.now();
+function loop() { const nowT = performance.now(); if (animate) simHour = (simHour + (nowT - lastT) / 1000 * speedH) % 24; lastT = nowT; updatePeople(); const hh = Math.floor(simHour); document.getElementById('hud').textContent = document.getElementById('hud').textContent.replace(/الساعة \d+:00/, 'الساعة ' + hh + ':00'); const sp = dist * 0.01; if (document.getElementById('fl').checked) { const f = new THREE.Vector3(); cam.getWorldDirection(f); if (keys.w) tgt.addScaledVector(f, sp); if (keys.s) tgt.addScaledVector(f, -sp); const rt = new THREE.Vector3().crossVectors(f, cam.up); if (keys.d) tgt.addScaledVector(rt, sp); if (keys.a) tgt.addScaledVector(rt, -sp); place(); } r.render(sc, cam); requestAnimationFrame(loop); } loop();
 </script>

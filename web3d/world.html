@@ -1,7 +1,7 @@
 <!doctype html><meta charset="utf-8"><title>العالم ثلاثي الأبعاد</title>
-<style>body{margin:0;font:13px sans-serif}#hud{position:fixed;top:6px;left:6px;background:#0008;color:#fff;padding:4px 8px;border-radius:4px;direction:rtl}</style>
+<style>body{margin:0;font:13px sans-serif}#hud{position:fixed;top:6px;left:6px;background:#0008;color:#fff;padding:4px 8px;border-radius:4px;direction:rtl}#top{position:fixed;top:0;left:0;right:0;background:#222c;color:#fff;padding:4px 10px;direction:rtl;display:flex;gap:14px;align-items:center}#top button{margin:0 2px}#side{position:fixed;top:34px;right:0;bottom:0;width:300px;background:#fffe;padding:8px;overflow:auto;direction:rtl;display:none}.bar{height:6px;background:#ddd;margin:1px 0 5px}.bar i{display:block;height:6px;background:#3a8}</style>
 <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
-<div id="hud">…</div>
+<div id="top"><span id="st">…</span><span>السرعة: <button data-s="0">⏸</button><button data-s="1">1x</button><button data-s="2">2x</button><button data-s="5">5x</button><button data-s="10">10x</button></span><label><input type="checkbox" id="fl"> رحلة حرة (WASD)</label></div><div id="side"></div><div id="hud" style="top:40px">…</div>
 <script type="module">
 import * as THREE from 'three';
 import * as B from './buildings.js';
@@ -40,5 +40,29 @@ const cam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.5, 2000)
 cam.position.set(cx, h, cz + h * 0.9); cam.lookAt(cx, 0, cz);
 const c = counts; document.getElementById('hud').textContent = `سكان ${rows.length} | بيوت ${c.home || 0} | آبار ${c.well || 0} | حقول ${c.field || 0} | محلات ${c.shop || 0} | الساعة ${hour}:00 | ${live ? 'بث حي' : 'إعادة تشغيل'}`;
 window.__bench = window.__world = { people: rows.length, counts, zones: zc };
-function loop() { r.render(sc, cam); requestAnimationFrame(loop); } loop();
+// camera: orbit (drag), pan (right-drag / shift-drag), zoom (wheel), touch: 1 finger orbit, 2 fingers pinch zoom
+let tgt = new THREE.Vector3(cx, 0, cz), th = 0.0, ph = 0.9, dist = h * 1.3, keys = {};
+function place() { ph = Math.max(0.15, Math.min(1.45, ph)); dist = Math.max(3, Math.min(900, dist)); cam.position.set(tgt.x + dist * Math.sin(ph) * Math.sin(th), Math.max(1.5, tgt.y + dist * Math.cos(ph)), tgt.z + dist * Math.sin(ph) * Math.cos(th)); cam.lookAt(tgt); }
+const cv = r.domElement; let drag = null, moved = 0, pinch = 0;
+cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, pan: e.button === 2 || e.shiftKey }; moved = 0; cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY; moved += Math.abs(dx) + Math.abs(dy);
+  if (drag.pan) { const k = dist * 0.002; tgt.x -= (dx * Math.cos(th) + dy * Math.sin(th)) * k; tgt.z -= (-dx * Math.sin(th) + dy * Math.cos(th)) * k; } else { th -= dx * 0.005; ph -= dy * 0.005; } place(); });
+cv.addEventListener('pointerup', e => { drag = null; if (moved < 4) pick(e); });
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('wheel', e => { dist *= Math.exp(e.deltaY * 0.001); place(); e.preventDefault(); }, { passive: false });
+addEventListener('keydown', e => keys[e.key.toLowerCase()] = 1); addEventListener('keyup', e => keys[e.key.toLowerCase()] = 0);
+place();
+window.__dotpos = () => { const m = new THREE.Matrix4(); dots.getMatrixAt(0, m); const v = new THREE.Vector3().setFromMatrixPosition(m).project(cam); return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight }; };
+// picking a person -> side panel from /api/person/ID (same data as the console person command)
+const ray = new THREE.Raycaster(); const sd = document.getElementById('side'); let followId = null;
+const bar = (n, v) => `${n} <b>${Math.round(v)}</b><div class="bar"><i style="width:${Math.max(0, Math.min(100, v))}%"></i></div>`;
+async function pick(e) { const m = new THREE.Vector2(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(m, cam); ray.params.Points = {}; const hit = ray.intersectObject(dots)[0]; if (!hit || hit.instanceId == null) return; const id = rows[hit.instanceId][0]; followId = id; await showPerson(id); }
+async function showPerson(id) { if (live === undefined) return; const p = await fetch(API + '/api/person/' + id).then(r => r.json()); const n = p.needs || {};
+  sd.style.display = 'block'; sd.innerHTML = `<h3>${p.name}</h3>العمر ${p.age} | ${p.stage} | ${p.role} | قبيلة ${p.tribe}<br>النشاط: ${p.activity ?? '-'} (${p.zone ?? '-'})<br>المال: ${p.pouch}<hr>` + bar('الجوع', n.hunger) + bar('العطش', n.thirst) + bar('الطاقة', n.energy) + bar('الصحة', n.health) + bar('السعادة', n.happiness) + `<hr>جدول اليوم: ${(p.today || []).map(a => a[2]).join(' ← ')}<hr><small>العائلة: ${JSON.stringify(p.family || {})}</small>`; }
+// top bar: day/season/population/speed from /api/state; speed via /api/control
+async function bar2() { try { const s = await fetch(API + '/api/state').then(r => r.json()); document.getElementById('st').textContent = `اليوم ${s.day} | الفصل ${s.season} | السكان ${s.population}${s.paused ? ' | متوقف' : ''}`; } catch (e) {} }
+bar2(); setInterval(bar2, 3000);
+const ctl = b => fetch(API + '/api/control', { method: 'POST', body: JSON.stringify(b) }).catch(() => {});
+document.querySelectorAll('#top button').forEach(b => b.onclick = async () => { const k = +b.dataset.s; if (k === 0) return ctl({ action: 'pause' }); await ctl({ action: 'speed', value: 20 / k }); ctl({ action: 'resume' }); });
+function loop() { const sp = dist * 0.01; if (document.getElementById('fl').checked) { const f = new THREE.Vector3(); cam.getWorldDirection(f); if (keys.w) tgt.addScaledVector(f, sp); if (keys.s) tgt.addScaledVector(f, -sp); const rt = new THREE.Vector3().crossVectors(f, cam.up); if (keys.d) tgt.addScaledVector(rt, sp); if (keys.a) tgt.addScaledVector(rt, -sp); place(); } r.render(sc, cam); requestAnimationFrame(loop); } loop();
 </script>

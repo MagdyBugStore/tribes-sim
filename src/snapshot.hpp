@@ -58,6 +58,7 @@ struct Snapshot {
     std::string season;
     double seconds_per_day = 1.0;   // the "time scale"
     bool paused = false;
+    long long since_step_ms = 0;    // time since the day began (live mode), else 0
     int population = 0, births = 0, deaths = 0;
     double money_supply = 0, gini = 0;
     std::vector<std::string> tribe_names;

@@ -48,6 +48,8 @@ void run_console(World& w, int max_days, int serve_port,
                         break;
                     }
                     w.step();
+                    w.last_step_ms.store(std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now().time_since_epoch()).count());
                     std::cout << w.daily_summary() << std::endl;
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(

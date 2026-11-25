@@ -1,0 +1,3 @@
+tribes
+tests/run_tests
+*.o

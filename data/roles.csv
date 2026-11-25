@@ -1,0 +1,47 @@
+# The trades of the valley. Columns:
+# name,sector,payer,daily_wage,male_only,female_only,founding_fraction
+# payer: M = Majlis salary, B = Bayt al-Mal salary, N = earns in the market
+# (selling produce, crafting, fees). Fractions are of the working adults;
+# the remainder are Ajers (day laborers).
+name,sector,payer,daily_wage,male_only,female_only,founding_fraction
+GrandSheikh,majlis,M,14,1,0,0.001
+Sheikh,majlis,M,8,1,0,0.012
+Imam,mosque,M,6,1,0,0.008
+Muezzin,mosque,M,3,1,0,0.006
+Qadi,majlis,M,7,1,0,0.004
+Muallim,mosque,M,4,1,0,0.015
+Hakim,health,M,6,0,0,0.012
+Qabila,health,M,7,0,1,0.006
+Shair,arts,M,4,0,0,0.008
+Haris,watch,M,4,1,0,0.010
+Faris,guard,M,4,1,0,0.020
+Khazin,bayt,B,4,1,0,0.008
+Overseer,market,M,6,1,0,0.006
+Nakhali,groves,M,4,0,0,0.090
+WellDigger,works,M,6,1,0,0.010
+Tajir,market,N,0,0,0,0.040
+Ajer,labor,N,0,0,0,0.060
+Fallah,fields,N,0,1,0,0.100
+WellKeeper,water,N,0,1,0,0.035
+Herder,herds,N,0,0,0,0.080
+CamelHerder,herds,N,0,1,0,0.025
+Dairyman,dairy,N,0,0,0,0.025
+Hunter,hunting,N,0,1,0,0.025
+Falconer,hunting,N,0,1,0,0.008
+Miller,crafts,N,0,1,0,0.018
+Baker,crafts,N,0,0,0,0.045
+Weaver,crafts,N,0,0,0,0.025
+Tanner,crafts,N,0,1,0,0.020
+Haddad,crafts,N,0,1,0,0.010
+SaltDigger,salt,N,0,1,0,0.025
+Hattab,firewood,N,0,1,0,0.030
+Jazzar,market,N,0,1,0,0.012
+Khaddam,households,N,0,0,0,0.015
+Caravaneer,caravans,N,0,1,0,0.012
+CamelDriver,caravans,N,0,1,0,0.015
+Hakawati,arts,N,3,0,0,0.006
+Muzayyin,services,N,0,0,0,0.008
+Dalil,services,N,0,1,0,0.006
+Tilmidh,school,N,0,0,0,0
+Child,home,N,0,0,0,0
+Elder,home,N,0,0,0,0

@@ -1,0 +1,26 @@
+# Production chains (section 4c). One row per named stage.
+# Columns: stage,process,role,in1,qty1,in2,qty2,in3,qty3,in4,qty4,
+#          out1,qty1,out2,qty2,capacity_runs_per_worker_day
+# process: craft = inputs consumed, outputs created, the difference is the
+#          named loss; extract|gather|hunt = named creation from the land;
+# (milking, well-drawing and farming run in dedicated code, same ledger)
+stage,process,role,in1,qty1,in2,qty2,in3,qty3,in4,qty4,out1,qty1,out2,qty2,capacity
+milling,craft,Miller,wheat,100,,,,,,,flour,75,bran,20,2.0
+baking,craft,Baker,flour,10,water,5,salt,0.1,firewood,0.8,bread,52,,,3.0
+cheese-making,craft,Dairyman,milk,10,,,,,,,cheese,1.2,,,2.0
+laban-making,craft,Dairyman,milk,4,,,,,,,laban,3.6,,,3.0
+tanning,craft,Tanner,hide,1,salt,0.2,,,,,leather,1,,,3.0
+sandal-making,craft,Tanner,leather,1,,,,,,,sandals,2,,,2.0
+waterskin-making,craft,Tanner,leather,1,,,,,,,waterskin,1,,,2.0
+spinning,craft,Weaver,wool,1,,,,,,,yarn,0.85,,,4.0
+rug-weaving,craft,Weaver,yarn,4,,,,,,,rug,1,,,0.25
+tent-weaving,craft,Weaver,yarn,8,,,,,,,tent,1,,,0.10
+tool-smithing,craft,Haddad,iron,3,,,,,,,tools,6,,,0.5
+blade-smithing,craft,Haddad,iron,2,,,,,,,blade,1,,,0.3
+slaughter-sheep,slaughter,Jazzar,sheep,1,,,,,,,meat,13,hide,1,2.0
+slaughter-goat,slaughter,Jazzar,goat,1,,,,,,,meat,10,hide,1,2.0
+slaughter-camel,slaughter,Jazzar,camel,1,,,,,,,meat,180,hide,1,0.2
+salt-extraction,extract,SaltDigger,,,,,,,,,salt,25,,,1.0
+firewood-gathering,gather,Hattab,,,,,,,,,firewood,10,,,1.0
+hunting,hunt,Hunter,,,,,,,,,meat,6,hide,0.5,0.15
+falconry,hunt,Falconer,,,,,,,,,meat,1.5,,,0.4

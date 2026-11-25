@@ -1,0 +1,1 @@
+Run from the project root:  g++ -O2 -std=c++17 -Isrc tests/run_tests.cpp $(ls src/*.cpp | grep -v main.cpp) -o tests/run_tests && ./tests/run_tests

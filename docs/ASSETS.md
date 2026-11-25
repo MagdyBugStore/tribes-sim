@@ -34,3 +34,7 @@ Playground: `python3 -m http.server 8000 --directory web3d`, then http://localho
 - Terrain code (heightmap, chunked LOD): not catalogued. three.js itself is MIT and its examples include noise helpers, but I did not read them.
 - The playground shows characters without their textures (FBX texture links are not resolved), so they look dark. Scale per species is normalised to a fixed height, so the horse looks small next to the cow.
 - Only Chrome with software GL was tested.
+
+## Generated textures (3D-3, partial)
+
+`python3 tools/gen_textures.py --seed 1 --size 512` writes 13 seamless PNGs to `web3d/textures/` (sand light and dark, packed earth, gravel, rock, dry grass, field soil, cracked mud, mud-brick, plaster, wood planks, goat-hair stripes, rug). Standard library only, no external images, same seed gives the same bytes. `python3 tests/test_textures.py` checks that opposite edges match and that output is reproducible. Contact sheet: `docs/textures-sheet.png`.

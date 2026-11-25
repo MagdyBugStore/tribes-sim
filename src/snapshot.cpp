@@ -1,6 +1,10 @@
 // snapshot.cpp: lock-short copy of the world, then JSON rendering.
 #include "snapshot.hpp"
 
+#include <algorithm>
+
+#include "activity.hpp"
+
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -149,6 +153,42 @@ Snapshot take_snapshot(World& w, long long* lock_micros) {
     return s;
 }
 
+
+// One line on why the person does this at this hour (derived from the same
+// rules as schedule_for; needs only matter for the current day).
+static bool is_working_role(const std::string& r) { return r != "Child" && r != "Elder" && r != "Tilmidh"; }
+
+static std::string reason_for(const World& w, const Person& p, const Activity& a, int hour, int day) {
+    char b[160];
+    const std::string n = a.name;
+    if (n == "fetch_water") {
+        std::snprintf(b, sizeof b, "thirsty (thirst %.0f of 100): going to the well", p.thirst);
+        return b;
+    }
+    if ((n == "eat_suq" || n == "eat_home") && day == w.tick && p.hunger < 30 && hour >= 10 && hour <= 12) {
+        std::snprintf(b, sizeof b, "hungry (hunger %.0f of 100): eating now", p.hunger);
+        return b;
+    }
+    if (n == "rest_sick") return "sick: resting at home";
+    if (n == "jumuah") return "Friday prayer at the mosque";
+    if (n == "deceased") return "deceased";
+    switch (a.kind) {
+        case ActKind::Sleep: return "night: sleeping";
+        case ActKind::Prayer: return is_friday(day) && hour >= 12 && hour <= 13 ? "Friday prayer" : "prayer time";
+        case ActKind::Meal: return "mealtime";
+        case ActKind::Study: return "school hours: a child studies on weekdays";
+        case ActKind::Care: return "caring for the family";
+        case ActKind::Social: return "free time with others";
+        case ActKind::Work: return "work of a " + p.role + (is_friday(day) ? "" : " during the working day");
+        case ActKind::Need: return "meeting a need";
+        default: break;
+    }
+    if (p.retired) return "retired: rests and is looked after by the family";
+    if (p.age() >= COMING_OF_AGE && hour >= 11 && hour <= 15 && is_working_role(p.role))
+        return "midday rest: the heat is too strong to work, back to it later";
+    return "free time at home";
+}
+
 PersonDetail take_person(World& w, int id) {
     PersonDetail d;
     std::lock_guard<std::mutex> g(w.lock);
@@ -185,6 +225,32 @@ PersonDetail take_person(World& w, int id) {
             if (!dup) d.siblings.push_back({c, name_of(c)});
         }
     }
+    d.day = w.tick;
+    {
+        const long long last = w.last_step_ms.load();
+        const long long now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count();
+        const double frac = (last > 0 && w.tick_interval > 0)
+            ? std::min(0.999, std::max(0.0, (now_ms - last) / 1000.0 / w.tick_interval)) : 0.0;
+        d.hour = static_cast<int>(frac * 24);
+    }
+    d.pregnant = p->pregnant_since != -1;
+    if (p->alive) {
+        const auto sch = schedule_for(w, *p, w.tick);
+        for (int h = 0; h < static_cast<int>(sch.size()); ++h) {
+            const Activity& a = sch[static_cast<size_t>(h)];
+            d.today.push_back({a.name, a.en, a.ar, zone_name(a.zone), zone_label_en(a.zone),
+                               zone_label_ar(a.zone), reason_for(w, *p, a, h, w.tick)});
+        }
+    }
+    for (size_t i = 0; i < p->stock.size() && i < w.data.items.size(); ++i)
+        if (p->stock[i] >= 0.5)
+            d.goods.push_back({w.data.items[i].name, p->stock[i], w.data.items[i].kind == "livestock"});
+    std::sort(d.goods.begin(), d.goods.end(), [](const PersonDetail::Good& a, const PersonDetail::Good& b) {
+        if (a.livestock != b.livestock) return a.livestock;
+        return a.units > b.units;
+    });
+    if (d.goods.size() > 10) d.goods.resize(10);
     for (const auto& h : p->history) d.history.push_back(h);
     while (d.history.size() > 60) d.history.erase(d.history.begin());
     return d;
@@ -334,8 +400,27 @@ std::string json_person(const PersonDetail& d) {
     j.key("qard"); j.num(d.qard); j.raw(",");
     j.key("honor"); j.num(d.honor); j.raw(",");
     j.key("skill"); j.num(d.skill); j.raw(",");
-    j.key("activity"); j.raw("null,");
-    j.key("zone"); j.raw("null,");
+    j.key("hour"); j.integer(d.hour); j.raw(",");
+    j.key("activity"); if (d.today.empty()) j.raw("null"); else j.str(d.today[static_cast<size_t>(d.hour)].name); j.raw(",");
+    j.key("zone"); if (d.today.empty()) j.raw("null"); else j.str(d.today[static_cast<size_t>(d.hour)].zone); j.raw(",");
+    j.key("pregnant"); j.boolean(d.pregnant); j.raw(",");
+    j.key("day"); j.integer(d.day); j.raw(",");
+    j.key("today"); j.raw("[");
+    for (size_t i = 0; i < d.today.size(); ++i) {
+        const auto& s = d.today[i];
+        if (i) j.raw(",");
+        j.raw("["); j.str(s.name); j.raw(","); j.str(s.en); j.raw(","); j.str(s.ar); j.raw(",");
+        j.str(s.zone); j.raw(","); j.str(s.zone_en); j.raw(","); j.str(s.zone_ar); j.raw(",");
+        j.str(s.reason); j.raw("]");
+    }
+    j.raw("],");
+    j.key("goods"); j.raw("[");
+    for (size_t i = 0; i < d.goods.size(); ++i) {
+        if (i) j.raw(",");
+        j.raw("["); j.str(d.goods[i].name); j.raw(","); j.num(d.goods[i].units); j.raw(",");
+        j.boolean(d.goods[i].livestock); j.raw("]");
+    }
+    j.raw("],");
     j.key("family"); j.raw("{");
     j.key("spouse"); link(d.spouse, d.spouse_name); j.raw(",");
     j.key("father"); link(d.father, d.father_name); j.raw(",");

@@ -475,6 +475,25 @@ int main() {
                       sj.find("\"day\"") != std::string::npos,
                   "schedules API JSON is valid, small and read-only", buf);
         }
+        {
+            size_t pi = 0;
+            while (pi + 1 < w.people.size() && !(w.people[pi].alive && w.people[pi].age() >= 20 && w.people[pi].role != "Elder")) ++pi;
+            Person& p = w.people[pi];
+            const double old = p.thirst, oldh = p.hunger;
+            const bool old_sick = p.sick;
+            p.sick = false; p.thirst = 10;
+            PersonDetail d = take_person(w, p.id);
+            const std::string js = json_person(d);
+            bool thirsty = false;
+            for (const auto& s : d.today)
+                if (s.name == "fetch_water" && s.reason.find("thirsty") != std::string::npos) thirsty = true;
+            p.thirst = old; p.hunger = oldh; p.sick = old_sick;
+            std::snprintf(buf, sizeof buf, "%zu slots, %zu goods, %zu bytes", d.today.size(),
+                          d.goods.size(), js.size());
+            check(json_ok(js) && d.today.size() == 24 && thirsty && js.find("\"reason\"") == std::string::npos &&
+                      js.find("thirsty") != std::string::npos,
+                  "person detail: 24 slots, thirsty person gets a reason", buf);
+        }
         const std::string people = json_people(s, false, 0);
         std::snprintf(buf, sizeof buf, "%d people, %zu bytes (limit 409600), lock held %lld us",
                       s.population, people.size(), lock_us);

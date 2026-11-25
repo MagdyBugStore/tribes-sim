@@ -83,6 +83,14 @@ struct PersonDetail {
     std::vector<std::pair<int, std::string>> children, siblings;
     std::string spouse_name, father_name, mother_name;
     std::vector<std::string> history;       // last 60 lines
+    // Today's 24 hourly slots, each with a one-line reason (activity layer).
+    struct Slot { std::string name, en, ar, zone, zone_en, zone_ar, reason; };
+    int day = 0, hour = 0;
+    std::vector<Slot> today;
+    bool pregnant = false;
+    // Goods and animals the household owns: name, units, is livestock.
+    struct Good { std::string name; double units; bool livestock; };
+    std::vector<Good> goods;
 };
 
 // Copy the world under the lock. lock_micros (optional) receives how long

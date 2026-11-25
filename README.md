@@ -44,7 +44,7 @@ continues until the simulation ends. Endpoints (JSON, UTF-8, no CORS headers):
 |---|---|
 | `GET /api/state` | day, season, seconds per day, paused flag, population, births, deaths, money supply, Gini, tribes |
 | `GET /api/people?since=<day>` | living people as `{fields:[...], rows:[[...]]}`; `since` keeps people born on or after that day |
-| `GET /api/person/<id>` | full detail, family, last 60 history lines |
+| `GET /api/person/<id>` | full detail, family (with names), last 60 history lines, today's 24 slots with a one-line reason each (`today`: name, English, Arabic, zone, zone English, zone Arabic, reason), current `activity`/`zone`/`hour`, goods and animals owned (`goods`) |
 | `GET /api/schedules?day=<d>` | every living person's 24 hourly slots with map positions for one day (about 280 KB for 3,000 people, built once per day and cached; `/api/people` carries no positions) |
 | `GET /api/market`, `/api/herds`, `/api/caravans`, `/api/map` | shop prices per good, herd counts per tribe, caravan states, settlements and their zones |
 | `POST /api/control` | `{"action":"pause"}`, `{"action":"resume"}`, `{"action":"speed","value":seconds}` |
@@ -84,7 +84,7 @@ stops of their schedule; the sky darkens at night. Controls: pause, 1x / 2x /
 filters, labels and animals toggles, legend, mouse-wheel zoom and drag pan.
 The viewer polls `/api/state` every 0.5 s, `/api/people` every 2 s and
 `/api/schedules` once per day. `?hour=H` freezes the clock at hour H (used
-for the screenshots in `docs/viewer-*.png`). Tested in headless Chrome only;
+for the screenshots in `docs/viewer-*.png`). Click a person (or use the search box, by name or id) to open the side panel: header, what they do now and why (English and Arabic, right-to-left), need bars, money and goods, a 24-hour strip with the current hour marked, family links that switch the panel, the last 60 history lines and a Follow button (`?select=ID&follow=1` opens it from the URL). Tested in headless Chrome only;
 Firefox was not available.
 
 Console commands while running: `person <id>`, `family <id>`,

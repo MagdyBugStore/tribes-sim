@@ -24,6 +24,7 @@
 #include "data.hpp"
 #include "money.hpp"
 #include "person.hpp"
+#include "activity.hpp"
 #include "http_server.hpp"
 #include "snapshot.hpp"
 #include "stock.hpp"
@@ -502,6 +503,95 @@ int main() {
         HttpResponse resp = handle_request(*std::make_unique<World>(100, 1, 1.0, data), r, "web");
         check(resp.status == 403 || resp.status == 404, "router refuses /../src/main.cpp",
               "status " + std::to_string(resp.status));
+    }
+
+    // -- T16: the activity layer (issue 4) ------------------------------------------
+    {
+        World w(1000, 21, 1.0, data);
+        for (int d = 0; d < 9; ++d) w.step();   // day 9 is a Tuesday (day % 7 == 2)
+        const int tue = 9, fri = 12;            // 12 % 7 == 5
+        // determinism: the world hash and the simulation RNG are untouched
+        const uint64_t before = w.state_hash();
+        const auto rng_before = RNG;
+        long long calls = 0;
+        std::vector<std::vector<Activity>> tue_sched, fri_sched;
+        for (const auto& p : w.people) {
+            tue_sched.push_back(schedule_for(w, p, tue));
+            fri_sched.push_back(schedule_for(w, p, fri));
+            calls += 2;
+        }
+        char buf[200];
+        std::snprintf(buf, sizeof buf, "%lld schedules, hash %016llx -> %016llx", calls,
+                      (unsigned long long)before, (unsigned long long)w.state_hash());
+        check(before == w.state_hash() && RNG == rng_before,
+              "activity layer is read-only", buf);
+        // same inputs, same output
+        bool same = true;
+        for (size_t i = 0; i < w.people.size() && same; i += 7) {
+            auto again = schedule_for(w, w.people[i], tue);
+            for (int h = 0; h < 24; ++h)
+                same = same && std::strcmp(again[h].name, tue_sched[i][h].name) == 0;
+        }
+        check(same, "schedules are deterministic", "recomputed rows match");
+
+        int alive = 0, asleep3 = 0, adults = 0, dawn_ok = 0, farmers = 0, farm_rest = 0;
+        int fri_adults = 0, fri_mosque = 0;
+        for (size_t i = 0; i < w.people.size(); ++i) {
+            const Person& p = w.people[i];
+            if (!p.alive) continue;
+            ++alive;
+            if (tue_sched[i][3].kind == ActKind::Sleep || tue_sched[i][3].kind == ActKind::Dead ||
+                tue_sched[i][3].kind == ActKind::Rest)
+                ++asleep3;
+            if (p.age() >= 12) {
+                ++adults;
+                if (tue_sched[i][5].kind == ActKind::Prayer || tue_sched[i][5].zone == Zone::Mosque) ++dawn_ok;
+            }
+            if (p.role == "Fallah" && !p.sick && p.age() >= 16) {
+                ++farmers;
+                if (tue_sched[i][12].kind == ActKind::Rest) ++farm_rest;
+            }
+            if (p.age() >= 12 && !p.sick) {
+                ++fri_adults;
+                if (fri_sched[i][12].zone == Zone::Mosque && fri_sched[i][13].zone == Zone::Mosque)
+                    ++fri_mosque;
+            }
+        }
+        std::snprintf(buf, sizeof buf, "%d of %d asleep at 03:00", asleep3, alive);
+        check(asleep3 >= alive * 95 / 100, "hour 3: almost everyone asleep", buf);
+        std::snprintf(buf, sizeof buf, "%d of %d people 12+ praying or at the mosque at 05:00", dawn_ok, adults);
+        check(dawn_ok == adults, "dawn prayer for everyone 12+", buf);
+        std::snprintf(buf, sizeof buf, "%d of %d healthy farmers resting at 12:00", farm_rest, farmers);
+        check(farmers > 0 && farm_rest == farmers, "noon: farmers rest", buf);
+        std::snprintf(buf, sizeof buf, "%d of %d healthy people 12+ at the mosque, Friday 12:00-13:00",
+                      fri_mosque, fri_adults);
+        check(fri_adults > 0 && fri_mosque == fri_adults, "Friday midday: Jumu'ah", buf);
+
+        // every role in roles.csv has a defined work block that really works
+        std::string missing, idle;
+        for (const auto& r : w.data.roles) {
+            if (!has_work_block(r.name)) { missing += r.name + " "; continue; }
+            if (r.name == "Child" || r.name == "Tilmidh" || r.name == "Elder") continue;
+            Person p;
+            p.id = 1;
+            p.alive = true;
+            p.role = r.name;
+            p.gender = r.female_only ? Gender::Female : Gender::Male;
+            p.age_days = 30 * 365;
+            auto s = schedule_for(w, p, 1);
+            int work = 0;
+            for (auto& a : s) work += a.kind == ActKind::Work;
+            if (work < 3) idle += r.name + " ";
+        }
+        std::snprintf(buf, sizeof buf, "%zu roles; missing: [%s] no work hours: [%s]",
+                      w.data.roles.size(), missing.c_str(), idle.c_str());
+        check(missing.empty() && idle.empty(), "every roles.csv role has a work block", buf);
+        // labels
+        bool labels = true;
+        for (auto& row : tue_sched)
+            for (auto& a : row)
+                labels = labels && a.name[0] && a.en[0] && a.ar[0];
+        check(labels, "every activity has name, English and Arabic labels", "all slots");
     }
 
     std::printf("\n%s (%d failure%s)\n", failures == 0 ? "ALL TESTS PASSED" : "FAILURES",

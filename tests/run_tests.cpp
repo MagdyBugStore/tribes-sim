@@ -27,6 +27,7 @@
 #include "activity.hpp"
 #include "map.hpp"
 #include "http_server.hpp"
+#include "dashboard.hpp"
 #include "schedules_api.hpp"
 #include "snapshot.hpp"
 #include "stock.hpp"
@@ -474,6 +475,36 @@ int main() {
             check(json_ok(sj) && same_hash && sj.size() < 600 * 1024 &&
                       sj.find("\"day\"") != std::string::npos,
                   "schedules API JSON is valid, small and read-only", buf);
+        }
+        {
+            Dashboard dash;
+            dash.record(w);
+            dash.record(w);                       // same day twice: still one row
+            const std::string j1 = dash.json(-1, 0, 0);
+            w.step();
+            dash.record(w);
+            const std::string j2 = dash.json(-1, 0, 0);
+            const std::string j3 = dash.json(w.tick - 1, 0, 0);
+            const std::string sum = w.daily_summary();
+            int pop = 0, sick = 0;
+            for (const auto& p : w.people) if (p.alive) { ++pop; if (p.sick) ++sick; }
+            char want[160];
+            std::snprintf(want, sizeof want, "pop %d |", pop);
+            const bool pop_ok = sum.find(want) != std::string::npos;
+            std::snprintf(want, sizeof want, "hungry %d thirsty %d | sick %d |", w.hungry_today, w.thirsty_today, sick);
+            const bool need_ok = sum.find(want) != std::string::npos;
+            std::snprintf(want, sizeof want, "\"money\":%.2f", total_money(w));
+            const bool money_ok = j2.find(want) != std::string::npos;
+            auto count = [](const std::string& s, const std::string& k) {
+                size_t n = 0, at = 0;
+                while ((at = s.find(k, at)) != std::string::npos) { ++n; at += k.size(); }
+                return n;
+            };
+            std::snprintf(buf, sizeof buf, "rows %zu -> %zu -> %zu since, %zu bytes; pop/hungry/sick/money match `world`: %d%d%d",
+                          count(j1, "\"d\":"), count(j2, "\"d\":"), count(j3, "\"d\":"), j2.size(), pop_ok, need_ok, money_ok);
+            check(json_ok(j1) && json_ok(j2) && json_ok(j3) && count(j1, "\"pouches\"") == 1 &&
+                      count(j2, "\"pouches\"") == 2 && count(j3, "\"pouches\"") == 1 && pop_ok && need_ok && money_ok,
+                  "dashboard history: valid, one row per day, numbers match the world summary", buf);
         }
         {
             size_t pi = 0;

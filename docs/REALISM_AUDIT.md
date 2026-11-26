@@ -52,3 +52,20 @@ Classification: unresolved. Either (a) a model error because the code contradict
 Founding 1000 people (seed 42), age in 360-day years: 0: 20, 1-4: 73, 5-14: 178, 15-29: 215, 30-44: 251, 45-59: 186, 60-74: 72, 75+: 5. So 27% are under 15 and 26% are 45 or older. I have NOT verified a source for a pre-modern age pyramid, so no verdict. It is a plausible reason why under-5 deaths are only 10% of deaths: few infants exist at the start.
 Births: 72 births in the year to 239 women aged 15 to 44, about 0.30 births per fertile woman per year. The crude birth rate of 86 per 1000 is partly because the population shrinks and 24% of it is fertile women. No source verified for per-woman fertility either.
 Early-year check (first 60 days, crafter roles Baker, Weaver, Dairyman): mean pouch rises from about 10 to about 100 and nobody among them is hungry. So the near-zero pouches of those roles at day 360 come later in the year and are a result of the price and money-drain chain above, not a day-one margin error. Bakery margin at base prices is positive (inputs about 25 dirhams for 52 loaves at 0.6, about 31).
+
+## Decision and change: per-tribe council customs (PR for #2)
+Owner decision (user, via the coordinating agent, 26 Nov): take the decision from historical reality; each tribe may have a different system.
+
+Full texts read this time:
+- S4: Fletcher, "The Amarat, their Sheikh, and the Colonial State" (Warwick WRAP, full PDF): https://wrap.warwick.ac.uk/id/eprint/93322/1/WRAP-Amarat-Sheikh-Colonial-State-Fletcher.pdf . "In a culture in which generosity conferred power and prestige", a British visitor reported up to forty guests regularly dining in the sheikh's tent. A sheikh was expected to extend hospitality and mediate disputes. Khuwwa (protection payment to the sheikh) was real income.
+- S5: Tapper, "The organization of nomadic communities in pastoral societies of the Middle East" (1979, full PDF): https://www.nomadsed.de/fileadmin/user_upload/redakteure/Dateien_Intern/Archiv_AG_1/Tapper_The_organization_of_nomadic_communities_in_pastoral_societies_of_the_Middle_East__1979_.pdf . Leadership differed by tribe: Murrah lineages roughly equal, no leader or council of elders at lineage level; Shammar subsections led informally by an old man as shaykh; Basseri camps led by unofficial elders but the tribe under a chief with appointed subchiefs.
+- Shryock 2019 (Balga of Jordan, abstract only, see above) on hoarding by dominant families.
+
+| Fact | Source | Simulation | Verdict | Action |
+|---|---|---|---|---|
+| Sheikhly generosity and open tents were a source of authority | S4 | Majlis never paid relief | (a) model gap for tribes of this type | Even-numbered tribes: their share of the treasury above 5000 dirhams pays 4 dirhams a day to each hungry member |
+| Leadership and wealth concentration differed between tribes | S5, Shryock | One custom for all tribes | (a) | Odd-numbered tribes keep the old behaviour (retain surplus) |
+
+Limits, stated plainly: the sources show both customs existed, not which of this simulation's tribes follows which. The even/odd split is a modelling choice. The treasury is still one shared account, so an open-tent tribe spends from the common purse in proportion to its population. Quantities (reserve 5000, relief 4 dirhams) are not sourced.
+
+Result (diagnose, 1000 people, 360 days): seed 42 death rate 465 to 401 per 1000; seed 2 635 to 404; seed 3 178 to 352 (worse). Single runs are very noisy: any change moves the global RNG stream, so these do not show an effect. All are still about 10 times the 35 to 40 per 1000 of S1. This change does not fix the death rate and no claim is made that it does. The main cause (hungry penniless people dying of "illness") is still open.

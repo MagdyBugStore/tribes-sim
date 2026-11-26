@@ -132,7 +132,7 @@ void majlis_daily(World& w) {
         w.events.add("Day " + std::to_string(w.tick) +
                      ": the Majlis could not pay its people in full");
 
-    // The council does not hoard: a surplus goes back into the valley.
+    // The council spends on wells and feasts; relief for the hungry is per tribe below.
     // First the wells, then the feasts.
     // Dig only when the valley actually needs water: existing wells below
     // 130% of the valley's daily draw.
@@ -171,6 +171,37 @@ void majlis_daily(World& w) {
                 w.majlis.wells_dug++;
                 w.events.add("Day " + std::to_string(w.tick) +
                              ": a new well is dug, praise God");
+            }
+        }
+    }
+    // Per-tribe council customs. The sources describe both kinds of sheikh:
+    // one whose tent is open to the needy (generosity confers power), and
+    // one who keeps the income in his family. Even-numbered tribes follow the
+    // open-tent custom: their share of the treasury above a reserve feeds
+    // their hungry people. Odd-numbered tribes keep their share (as before).
+    // Which tribe follows which custom is a modelling choice, not a source.
+    {
+        const double RESERVE = 5000.0, RELIEF = 4.0;  // dirhams
+        double surplus = w.majlis.balance - RESERVE;
+        if (surplus > 0 && !w.people.empty()) {
+            int alive = 0;
+            for (auto& p : w.people) if (p.alive) ++alive;
+            for (int t = 0; t < static_cast<int>(w.tribe_names.size()); t += 2) {
+                int n = w.tribe_size(t);
+                if (alive == 0 || n == 0) continue;
+                double budget = surplus * n / alive;
+                int fed = 0;
+                for (auto& p : w.people) {
+                    if (!p.alive || p.tribe != t || p.hunger >= 30) continue;
+                    if (budget < RELIEF) break;
+                    if (transfer(w, majlis_acc(), person_acc(p.id), RELIEF,
+                                 "open-tent relief", false)) {
+                        budget -= RELIEF; ++fed;
+                    }
+                }
+                if (fed > 0 && w.tick % 30 == 0)
+                    w.events.add("Day " + std::to_string(w.tick) + ": the sheikh's tent of tribe " +
+                                 std::to_string(t) + " feeds " + std::to_string(fed) + " hungry guests");
             }
         }
     }

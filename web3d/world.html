@@ -5,6 +5,7 @@
 <script type="module">
 import * as THREE from 'three';
 import * as B from './buildings.js';
+import { SHAPES, SIZE } from './animals.js';
 const q = new URLSearchParams(location.search); const LANG = q.get('lang') === 'en' ? 'en' : 'ar', API = q.get('api') || '', replay = q.get('replay');
 // data source: live API, or a JSON-lines replay file: {"type":"map","data":{..}} / {"type":"people","data":{..}} per line
 async function load() {
@@ -59,7 +60,8 @@ function updatePeople() { if (!SP) return; const h0 = Math.floor(simHour) % 24, 
 let herdNote = '';
 if (herds) { const tot = herds.tribes.reduce((a, t) => a + Object.values(t.counts).reduce((x, y) => x + y, 0), 0), N = Math.max(1, Math.ceil(tot / 600)); const COL = { camel: 0xc8a060, horse: 0x6b3a1a, cattle: 0x333333, goat: 0xeeeeee, sheep: 0xf5f0e0, donkey: 0x888888, chicken: 0xd04020 }; const list = [];
   herds.tribes.forEach(t => { const pas = (zonePos.pasture || []).filter(o => o[1] === t.tribe); const pool = pas.length ? pas : (zonePos.pasture || []); for (const [k, c] of Object.entries(t.counts)) for (let i = 0; i < Math.round(c / N); i++) { const o = pool[(list.length * 7) % Math.max(1, pool.length)]; if (o) list.push([o[3] + (rnd() - 0.5) * o[5] * 1.6, o[4] + (rnd() - 0.5) * o[5] * 1.6, k]); } });
-  const im = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.7, 0.5), new THREE.MeshLambertMaterial({ color: 0xffffff }), list.length); list.forEach((a, i) => { tmp.position.set(a[0] * S, 0.4, a[1] * S); tmp.rotation.y = rnd() * 6; tmp.scale.setScalar(a[2] === 'camel' ? 2 : a[2] === 'chicken' ? 0.5 : 1.2); tmp.updateMatrix(); im.setMatrixAt(i, tmp.matrix); im.setColorAt(i, new THREE.Color(COL[a[2]] || 0xffffff)); }); tmp.rotation.y = 0; sc.add(im); herdNote = ` | حيوانات ${tot} (كل مجسّم = ${N})`; }
+  const bySp = {}; list.forEach(a => (bySp[a[2]] ||= []).push(a));
+  for (const [k, arr] of Object.entries(bySp)) { const mk2 = SHAPES[k] || SHAPES.sheep; const im = new THREE.InstancedMesh(mk2(), new THREE.MeshLambertMaterial({ color: 0xffffff }), arr.length); arr.forEach((a, i) => { tmp.position.set(a[0] * S, 0, a[1] * S); tmp.rotation.y = rnd() * 6; tmp.scale.setScalar((SIZE[k] || 1.2) * (0.9 + rnd() * 0.2)); tmp.updateMatrix(); im.setMatrixAt(i, tmp.matrix); im.setColorAt(i, new THREE.Color(COL[k] || 0xffffff)); }); im.frustumCulled = false; sc.add(im); } tmp.rotation.y = 0; tmp.scale.setScalar(1); herdNote = ` | حيوانات ${tot} (كل مجسّم = ${N})`; }
 // caravans: when not 'away', draw camels + cargo near the caravanserai/suq (state text from the API)
 let carNote = '';
 if (cars) { const here = cars.caravans.filter(c => c.state !== 'away'); carNote = ` | قوافل في الوادي ${here.length}`; const base = (zonePos.caravanserai || zonePos.suq || [[0, 0, 0, 1000, 650]])[0];

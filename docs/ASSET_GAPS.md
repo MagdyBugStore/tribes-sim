@@ -18,3 +18,6 @@ To be filled by procedural models or generated textures in the next issues (3D-3
 
 ## World scene (issue #16)
 `web3d/world.html` is a first pass: static placement from `/api/map` plus one dot per person from the current `/api/people` frame. Missing: people walking schedules over 24h, caravans/camels, events, new wells/fields animation, terrain bands, build animation, tent look (tribe 1 homes render as a messy cluster).
+
+## Procedural livestock (issue #12, decided by the owner's coordinating agent: no CC BY assets)
+`web3d/animals.js` builds camel, goat, donkey, horse, cattle, sheep and chicken from boxes (one merged geometry per species, tinted per instance). `world.html` now shows herds with these instead of grey boxes. They are static (no walk or graze animation) and low detail. Sizes were set from real height ratios against the 1.3-unit person capsule; the person capsules in this viewer look larger than that next to the animals, which was already the case. The CC0 wind loop (SFXMint) could not be added: its download endpoint refuses plain downloads without an account key, and I did not work around that. The wind audio is still open.

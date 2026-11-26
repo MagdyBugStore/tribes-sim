@@ -92,7 +92,7 @@ void World::resolve_indices() {
     ix.wheat = get("wheat");   ix.flour = get("flour");
     ix.bran = get("bran");     ix.dates = get("dates");
     ix.milk = get("milk");     ix.laban = get("laban");
-    ix.cheese = get("cheese"); ix.meat = get("meat");
+    ix.cheese = get("cheese"); ix.samn = get("samn"); ix.meat = get("meat");
     ix.salt = get("salt");     ix.hide = get("hide");
     ix.leather = get("leather"); ix.sandals = get("sandals");
     ix.waterskin = get("waterskin"); ix.wool = get("wool");
@@ -378,7 +378,7 @@ void World::found_economy() {
                    C = k == ShopKind::CraftShop, V = k == ShopKind::CaravanSouk;
         if (item == ix.water) return W;
         if (item == ix.bread || item == ix.dates || item == ix.milk ||
-            item == ix.laban || item == ix.cheese || item == ix.meat ||
+            item == ix.laban || item == ix.cheese || item == ix.samn || item == ix.meat ||
             item == ix.salt || item == ix.spice || item == ix.sugar ||
             item == ix.coffee)
             return F;

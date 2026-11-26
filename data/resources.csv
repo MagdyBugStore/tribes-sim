@@ -18,6 +18,7 @@ dates,kg,good,1,240,2.00,0.5,3.0,130000,0.35,0.50,0.05,0.10,0.30,0.15,0,25,hunge
 milk,liter,good,1,2,1.00,0.5,2.5,2000,0.70,0.30,0.0,0.0,0.30,0.40,0,10,thirst,0,0,0,fresh milk sours in two days; children drink more
 laban,liter,good,1,5,1.20,0.5,2.5,1500,0.70,0.30,0.0,0.0,0.15,0.15,0,12,thirst,0,0,0,soured milk keeps a few days longer than fresh
 cheese,kg,good,1,90,8.00,0.6,2.5,1500,0.60,0.35,0.05,0.0,0.03,0.02,0,20,hunger,0,20,0,salted cheese keeps through the hot months
+samn,kg,good,1,180,30.0,0.6,2.5,600,0.60,0.35,0.05,0.0,0.02,0.01,0,40,hunger,0,30,0,clarified butter churned from goat and sheep milk; a staple and a trade good of the herds
 meat,kg,good,1,3,15.0,0.6,2.5,1500,0.50,0.45,0.05,0.0,0.06,0.03,0,35,hunger,0,0,0,meat is a feast food; about 60 grams per adult a day
 salt,kg,good,1,0,2.00,0.5,2.5,3000,0.40,0.40,0.10,0.10,0.012,0.006,0,0,,0,40,0,the salt pans are a steady export of the valley
 hide,piece,good,1,40,6.00,0.5,2.0,300,0.10,0.80,0.10,0.0,0,0,0,0,,0,20,0,every slaughtered animal gives one hide

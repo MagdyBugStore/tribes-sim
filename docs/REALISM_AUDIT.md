@@ -106,3 +106,13 @@ Source read in full:
 How food reaches people in the code today: farming (wheat) to miller to baker to shop; date groves to shops; milking to dairyman (cheese, laban); herds born and dying; the butcher buys sheep, goat and camel from herders and sells meat at the suq; hunters and falconers add meat; caravans import and export. Money historically: S8 describes a mixed economy of herd products (samn, animals) sold in towns, dates and grain bought with them, and caravan trade. Wages and price ratios remain unverified.
 
 Prayer attendance by women: Women in the Mosque: Historical Perspectives on Segregation (AJISS, https://www.ajis.org/index.php/ajiss/article/download/504/2268/4998), read in full. Early traditions show women prayed in the Prophet's mosque, and other traditions say prayer at home is better for them; the sources are contested. Simulation: women pray at home. Verdict: contested, left unchanged.
+
+## Food fixes implemented (source S8, see above)
+Approved by the owner through the coordinating agent (26 Nov).
+| Fact (S8) | Change | Check |
+|---|---|---|
+| Camels were rarely slaughtered, only surplus bulls, injured or sick | `slaughter-camel` capacity cut from 0.2 to 0.03 runs per butcher per day (about 11 camels a year per butcher) | Unsourced number. The herds do not track sex, so "surplus males only" and "injured or sick" are NOT modelled; the cut only makes camel slaughter rare. |
+| Samn (clarified butter) is a staple and a major trade good, churned from goat or sheep milk | New item `samn` (30 dirhams/kg, 600 kg at start, 30 kg exported per caravan, eaten from the pantry or suq), and a Dairyman recipe `samn-making` (25 L milk to 1 kg) | The 25 L per kg ratio and the 30 dirham price are my assumptions, not from S8. Seed 42: samn is stocked in two shops by day 200 at a falling price (30 to 18). |
+| Hospitality slaughter for guests | Not implemented | The sim has no guest-hosting mechanism for travellers; it would need one first. |
+| Chickens, eggs, rice | Not changed | No source found. |
+Seed 42 (1000 people, 360 days): death rate 329 per 1000, birth rate 99; meat share of spending 2.4% (was 2.6%). Single runs are noisy; still about 9 times the sourced 35 to 40 per 1000. No claim that this fixes mortality.

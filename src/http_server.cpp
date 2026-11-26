@@ -223,6 +223,26 @@ HttpResponse handle_request(World& w, const HttpRequest& req,
         r.body = dashboard().json(since, static_cast<size_t>(std::max(0, car)), static_cast<size_t>(std::max(0, ev)));
     } else if (path == "/api/market") {
         r.body = json_market(take_snapshot(w));
+    } else if (path == "/api/levels") {
+        // Live fill levels for the viewer: each well's cistern (liters and
+        // the daily recharge) and the Bayt al-Mal granary's food stock (kg).
+        std::lock_guard<std::mutex> g(w.lock);
+        std::ostringstream o;
+        o << "{\"day\":" << w.tick << ",\"wells\":[";
+        for (size_t i = 0; i < w.wells.size(); ++i) {
+            if (i) o << ",";
+            o << "{\"id\":" << w.wells[i].id << ",\"tribe\":" << w.wells[i].tribe
+              << ",\"liters\":" << static_cast<long long>(stock_of(w, h_well(static_cast<int>(i)), w.ix.water))
+              << ",\"yield_day\":" << static_cast<long long>(w.wells[i].yield_day) << "}";
+        }
+        double food = 0;
+        for (int it : {w.ix.wheat, w.ix.flour, w.ix.bread, w.ix.dates})
+            food += stock_of(w, h_bayt(), it);
+        int alive = 0;
+        for (auto& p : w.people) if (p.alive) ++alive;
+        o << "],\"granary\":{\"food_kg\":" << static_cast<long long>(food)
+          << ",\"population\":" << alive << "}}";
+        r.body = o.str();
     } else if (path == "/api/herds") {
         r.body = json_herds(take_snapshot(w));
     } else if (path == "/api/caravans") {

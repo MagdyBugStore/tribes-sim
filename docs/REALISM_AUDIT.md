@@ -136,3 +136,13 @@ Diagnosis (seed 42, before the change): 263 of 295 deaths were illness deaths. A
 | 7 | 397 | 77 |
 | 99 | 242 | 71 |
 Single runs are noisy. Still above typical pre-modern rates; no tuning toward a target was done. Hunger (about half of illness deaths were hungry) and wages/prices are still open.
+
+## Tested and rejected: lower the Majlis public-works threshold (غير موثق)
+Idea (an assumption, not sourced): idle day labourers get 3 dirhams of public works while the Majlis balance is above 20 dirhams, instead of above 200.
+Result (crude death rate per 1000, then mean hungry per day out of 1000, after PR #54 and with the change):
+| Seed | Deaths before | Deaths with change | Hungry before | Hungry with change |
+|---|---|---|---|---|
+| 42 | 127 | 76 | 144 | 165 |
+| 7 | 77 | 77 | 177 | 177 |
+| 99 | 71 | 80 | 97 | 115 |
+Verdict: no consistent effect; the differences are within run-to-run noise. Not merged. The remaining hunger (10 to 18% a day) does not come from the labourers' income floor; the cause is likely in food supply, prices or distribution, and is still open. No sourced wage or price data for this setting has been found, so no estimate was added.

@@ -188,6 +188,7 @@ struct World {
     int weddings_total = 0, births_total = 0, deaths_total = 0;
     int births_today = 0, deaths_today = 0;
     int hungry_today = 0, thirsty_today = 0;
+    int free_cures_today[8] = {0, 0, 0, 0, 0, 0, 0, 0};
     int caravans_arrived = 0, caravans_failed = 0;
     double initial_supply = 0;
 

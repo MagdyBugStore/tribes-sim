@@ -46,6 +46,11 @@ std::string diagnose_run(World& w, int days) {
     o << "Deaths by cause:\n"; for (auto& kv : by_cause) o << "  " << kv.first << ": " << kv.second << "\n";
     o << "Deaths by age group (360-day years):\n"; for (int i = 0; i < 5; ++i) o << "  " << AGE_BANDS[i] << ": " << by_band[i] << f(" (%.0f%%)", dead ? 100.0 * by_band[i] / dead : 0) << "\n";
     o << "Deaths by role (deaths / people ever with that role at end):\n"; for (auto& kv : by_role) o << "  " << kv.first << ": " << kv.second << "\n";
+    { // state at death of the "illness" deaths (values frozen at the moment of death)
+        int n = 0, hungry = 0, penniless = 0, thirsty = 0, kids = 0; double sd = 0, sh = 0;
+        for (auto& p : w.people) if (!p.alive && p.death_cause == "illness") { ++n; if (p.hunger < 30) ++hungry; if (p.thirst < 30) ++thirsty; if (p.pouch < 3.0) ++penniless; if (p.age() < 16) ++kids; sd += p.sick_days; sh += p.health; }
+        { char b[300]; std::snprintf(b, sizeof b, "Illness deaths: %d; hunger<30 at death: %d; thirst<30: %d; pouch<3: %d; under 16: %d; mean sick days %.1f, mean health %.1f\n", n, hungry, thirsty, penniless, kids, n ? sd / n : 0.0, n ? sh / n : 0.0); o << b; }
+    }
     o << "Deaths by tribe:\n"; for (auto& kv : by_tribe) o << "  " << kv.first << ": " << kv.second << "\n";
     // births by mother's age at the child's birth (mother's age_days now minus child's age days; only exact while the mother is alive)
     int bm[5] = {0}; int bm_n = 0;

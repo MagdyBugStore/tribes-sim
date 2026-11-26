@@ -116,3 +116,23 @@ Approved by the owner through the coordinating agent (26 Nov).
 | Hospitality slaughter for guests | Not implemented | The sim has no guest-hosting mechanism for travellers; it would need one first. |
 | Chickens, eggs, rice | Not changed | No source found. |
 Seed 42 (1000 people, 360 days): death rate 329 per 1000, birth rate 99; meat share of spending 2.4% (was 2.6%). Single runs are noisy; still about 9 times the sourced 35 to 40 per 1000. No claim that this fixes mortality.
+
+## Mortality: free treatment for the penniless sick
+Sourced fact (S9, Encyclopaedia Iranica "Bimarestan", https://www.iranicaonline.org/articles/bimarestan-hospital/): medieval Islamic hospitals were paid for by endowments and bequests; physicians' pay, treatment, medicine and patients' food came from those funds.
+
+Diagnosis (seed 42, before the change): 263 of 295 deaths were illness deaths. All 263 had under 3 dirhams in the pouch, 132 were hungry (under 30), mean 35 sick days. The hakim was only reachable for people with more than 15 dirhams, so a penniless sick person could never be treated.
+
+### Assumptions (غير موثق) - not sourced, my reasoned estimates under the 5:09 AM instruction
+| Assumption | Value |
+|---|---|
+| The endowment-funded treatment custom (S9, cities) also applied to a desert tribe's hakim | Bayt al-Mal pays the tribe's hakim 5 dirhams per penniless sick person |
+| Limit per tribe | 15 patients a day, only while the Bayt has more than 200 dirhams of its own funds |
+| Effect of a visit | same as a paid visit (+18 health, -2 sick days): also an assumption |
+
+### Result (1000 people, 360 days, crude death rate per 1000)
+| Seed | Before | After |
+|---|---|---|
+| 42 | 329 | 127 |
+| 7 | 397 | 77 |
+| 99 | 242 | 71 |
+Single runs are noisy. Still above typical pre-modern rates; no tuning toward a target was done. Hunger (about half of illness deaths were hungry) and wages/prices are still open.

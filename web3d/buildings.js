@@ -21,12 +21,23 @@ const rnd = (s) => { let a = s * 9301 + 49297; return () => ((a = (a * 9301 + 49
 export const SOURCES = {}; // filled below: name -> {src, lic}
 const PROC = { src: 'procedural (three.js geometry + generated textures)', lic: 'project code / CC0-style generated textures' };
 
-export function tent(v = 0) { // goat-hair tent, sizes 0..2
-  const w = [3, 4.5, 6][v % 3], d = w * 0.8, h = w * 0.5;
-  const hair = mat('hair', 'goat_hair', 1);
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(d * 0.7, h, 8), hair);
-  roof.scale.set(w / d, 1, 1); roof.position.y = h / 2;
-  return G(roof, box(w * 0.4, 0.1, d * 0.4, mat('rug', 'rug', 1), 0, 0, d * 0.45));
+export function tent(v = 0) { // Bedouin black goat-hair tent: low ridged roof, closed back and sides, open front with poles and a rug
+  const w = [3, 4.5, 6][v % 3], d = w * 0.42, h = [1.8, 2.0, 2.2][v % 3], he = h * 0.62, hw = w / 2, hd = d / 2;
+  const key = 'tentH'; const hair = mats[key] || (mats[key] = new THREE.MeshLambertMaterial({ map: tex('goat_hair', 1), side: THREE.DoubleSide }));
+  const P = [], U = [];
+  const quad = (a, b, c, e) => { [a, b, c, a, c, e].forEach((p, k) => { P.push(...p); U.push(k % 3 === 0 && false ? 0 : 0, 0); }); };
+  const tri = (a, b, c) => P.push(...a, ...b, ...c);
+  // roof slopes (front and back)
+  quad([-hw - 0.25, he, hd + 0.35], [hw + 0.25, he, hd + 0.35], [hw + 0.25, h, 0], [-hw - 0.25, h, 0]);
+  quad([-hw - 0.25, he, -hd - 0.1], [hw + 0.25, he, -hd - 0.1], [hw + 0.25, h, 0], [-hw - 0.25, h, 0]);
+  // back wall and side walls (rect below the eaves, triangle above)
+  quad([-hw, 0, -hd], [hw, 0, -hd], [hw, he, -hd], [-hw, he, -hd]);
+  for (const sx of [-hw, hw]) { quad([sx, 0, -hd], [sx, 0, hd * 0.55], [sx, he, hd * 0.55], [sx, he, -hd]); tri([sx, he, -hd], [sx, he, hd * 0.55], [sx, h, 0]); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  // uv: planar from x and y/z so the stripe texture runs along the ridge
+  const uv = []; for (let k = 0; k < P.length; k += 3) uv.push(P[k] / 2, (P[k + 1] + P[k + 2]) / 2); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals();
+  const poles = [-hw, 0, hw].map(x => cyl(0.05, 0.05, he, mat('wood', 'wood_planks'), x, 0, hd + 0.3, 5));
+  return G(new THREE.Mesh(g, hair), ...poles, box(w * 0.5, 0.05, d * 0.5, mat('rug', 'rug', 1), 0, 0, hd * 0.2));
 }
 export function house(v = 0) { // mud-brick flat-roof house
   const m = mat('mb', 'mudbrick', 2), w = [4, 5, 6][v % 3], d = [4, 4.5, 5][v % 3], h = 2.6 + (v % 2) * 0.6;

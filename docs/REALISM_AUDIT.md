@@ -87,3 +87,22 @@ Sources read in full:
 | Fees in kind and gifts to teacher; teacher paid by families | S6 | Muallim paid by the Majlis (roles.csv) | (b) candidate | not changed, needs a source on the Arabian/Egyptian setting |
 
 Limits, stated plainly: S6 describes Persia, S7 the medieval Islamic world in general. Neither describes a Najdi Bedouin camp, where formal schooling for nomad children was probably rare; that is unverified. The change is only a schedule change. Not implemented: literacy or memorization progress, pupil teachers, in-kind fees, play/hours variation by class.
+
+## Food chain and livestock: what the sources say (docs only, no model change)
+Owner's question (26 Nov, relayed): is the animal-to-meat-to-market chain complete, and where did food and money historically come from?
+
+Source read in full:
+- S8: "Arabian Traveller's Observations on Bedouin Food" (compiled from Doughty, Thomas, Thesiger and others): http://enhg.org/alain/phil/bedouin/bedouin.htm . Staples: dates, wheat/barley flour and bread, rice, samn (clarified butter), milk (camel preferred), laban/dried yoghurt, coffee. One meal a day, or none, was common; "creeping hunger" is recorded. Boiled mutton or camel calf with rice (mansaf) "would normally only be a festival or major family event dish". A beast was often slaughtered for a guest's first meal as a show of wealth and honour; hosting could deplete the host's flock. Camels "would rarely be slaughtered for meat": only surplus bull calves or injured or sick beasts. Goats and sheep were kept for milk, samn and meat. Game (gazelle, hunted with salukis and hawks) was irregular. Samn was a major commercial product (a caravan of 30 tonnes from Aneyza). Cattle were kept in oases but of poor quality.
+
+| Fact | Source | Simulation (seed 42, 1000 people, 360 days) | Verdict | Action |
+|---|---|---|---|---|
+| Meat is a feast and hospitality food, not daily | S8 | Meat is 2.6% of spending (89k of the ledger); item note says "meat is a feast food" | matches | none |
+| Camels rarely slaughtered; only surplus bull calves, injured or sick | S8 | `slaughter-camel` recipe: any camel the butcher can buy, capacity 0.2 runs a day, 180 kg meat | (b) candidate: the code does not limit camel slaughter to surplus males or sick animals | open; needs herd sex data check before changing |
+| Samn (clarified butter) is a staple and a major trade good | S8 | no samn item; there is laban and cheese | (a) missing good | open: add as a dairy product after checking quantities |
+| Rice a staple of festival meals | S8 | not in the item list | (b) minor | open |
+| Hospitality slaughter for the first meal, costly to the host | S8 | none | not modelled | open |
+| Chickens, eggs | none found | chickens exist as livestock only; no slaughter recipe, no eggs | unverified: the source does not mention poultry in the Bedouin diet | no change; not adding eggs without a source |
+
+How food reaches people in the code today: farming (wheat) to miller to baker to shop; date groves to shops; milking to dairyman (cheese, laban); herds born and dying; the butcher buys sheep, goat and camel from herders and sells meat at the suq; hunters and falconers add meat; caravans import and export. Money historically: S8 describes a mixed economy of herd products (samn, animals) sold in towns, dates and grain bought with them, and caravan trade. Wages and price ratios remain unverified.
+
+Prayer attendance by women: Women in the Mosque: Historical Perspectives on Segregation (AJISS, https://www.ajis.org/index.php/ajiss/article/download/504/2268/4998), read in full. Early traditions show women prayed in the Prophet's mosque, and other traditions say prayer at home is better for them; the sources are contested. Simulation: women pray at home. Verdict: contested, left unchanged.

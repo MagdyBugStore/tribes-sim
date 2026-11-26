@@ -54,7 +54,7 @@ Snapshot take_snapshot(World& w, long long* lock_micros) {
                 std::chrono::steady_clock::now().time_since_epoch()).count();
             s.since_step_ms = last > 0 ? std::max(0LL, now_ms - last) : 0;
         }
-        s.births = w.births_total;
+        s.births = w.births_total; s.weddings = w.weddings_total; s.hungry = w.hungry_today;
         s.deaths = w.deaths_total;
         s.money_supply = total_money(w);
         s.gini = w.gini();
@@ -308,6 +308,8 @@ std::string json_state(const Snapshot& s) {
     j.key("since_step_ms"); j.integer(s.since_step_ms); j.raw(",");
     j.key("population"); j.integer(s.population); j.raw(",");
     j.key("births"); j.integer(s.births); j.raw(",");
+    j.key("weddings"); j.integer(s.weddings); j.raw(",");
+    j.key("hungry"); j.integer(s.hungry); j.raw(",");
     j.key("deaths"); j.integer(s.deaths); j.raw(",");
     j.key("money_supply"); j.num(s.money_supply); j.raw(",");
     j.key("gini"); j.num(std::round(s.gini * 1000) / 1000); j.raw(",");

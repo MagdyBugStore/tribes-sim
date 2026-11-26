@@ -1,4 +1,5 @@
 // main.cpp: flags, the headless run, the live run, the CSV export.
+#include "diagnose.hpp"
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -21,7 +22,7 @@ int main(int argc, char** argv) {
     double interval = 1.0;
     bool headless = false;
     int serve_port = 0, schedule_id = -1;
-    bool role_table = false;
+    bool role_table = false, diagnose = false;
     std::string print_map;
     std::string csv, data_dir = "data", web_root = "web";
     for (int i = 1; i < argc; ++i) {
@@ -37,6 +38,7 @@ int main(int argc, char** argv) {
         else if (a == "--serve") serve_port = std::atoi(next());
         else if (a == "--web") web_root = next();
         else if (a == "--schedule") schedule_id = std::atoi(next());
+        else if (a == "--diagnose") diagnose = true;
         else if (a == "--role-table") role_table = true;
         else if (a == "--print-map") print_map = next();
     }
@@ -60,6 +62,7 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    if (diagnose) { std::cout << diagnose_run(w, days); return 0; }
     std::cout << "Valley founded: " << people << " people in "
               << w.tribe_names.size() << " tribes, " << w.shops.size()
               << " shops, " << w.wells.size() << " wells, " << w.fields.size()

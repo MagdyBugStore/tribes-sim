@@ -47,3 +47,15 @@ Playground: `python3 -m http.server 8000 --directory web3d`, then http://localho
 
 ## Static batching (issue #15, point 4)
 `web3d/world.html` bakes all static building meshes (696 buildings) into 27 merged meshes, one per material. The original meshes stay hidden in the scene only so clicking a building still works. Measured in headless Chrome with software GL (seed 42, 1000 people): draw calls 1311 to 70. Triangles 85k to 98k, because the merged meshes are no longer frustum-culled. Real-GPU FPS is not measured here. Buildings added later by the build animation are not merged. Moving parts (smoke, flags, water) are not used by this viewer.
+
+## Research pass 2 (issue #12): camel and wind audio
+Read on the pages on 26 Nov 2026. Nothing was downloaded or added to the repo.
+
+| Category | Asset | URL | License evidence | Verdict |
+|---|---|---|---|---|
+| Animals | "Low Poly Camel - Rigged & Animated" by mem1nce | https://mem1nce.itch.io/low-poly-camel-rigged-animated | The page says the base mesh was made with Meshy AI and is "CC BY 4.0" (attribution needed). It lists 5 in-place clips (Walk, Run, Idle, Eat, Death) and FBX/GLB/BLEND files. The page does not state a separate license for the author's retextured, rigged files, and it does not give a polygon count in the text I read. | Candidate only. Needs attribution and the final file license confirmed on the download. AI-assisted model. Not used. |
+| Audio | SFXMint "Steady Desert Wind" (20.3 s loop, WAV) | https://sfxmint.com/sounds/desert-wind-03 | Page says CC0 1.0, no attribution, commercial use allowed. | Verified on the page; usable. Not yet added. |
+| Audio | OpenGameArt "Wind" | https://opengameart.org/content/wind | Page shows CC0; the author name is blank in the text I read. | Likely usable; author not confirmed. Not used. |
+| Audio | OpenGameArt "wind whoosh loop" | https://opengameart.org/content/wind-whoosh-loop | Page shows CC0; it is derived from "Loopable Dungeon Ambience" (not checked). | Not used until the source license is read. |
+
+Still not researched: call to prayer (needs a recording with clear rights and respectful use; I did not look for one), livestock sounds, goat, donkey, tent, mosque, majlis models. The issue's acceptance criteria (3 options per category, polygon counts, hash-checked fetch script) remain unmet, so #12 stays open.

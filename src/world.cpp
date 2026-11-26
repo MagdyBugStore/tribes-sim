@@ -653,6 +653,7 @@ void World::step() {
         b.imported_today = b.exported_today = 0;
     }
     births_today = deaths_today = hungry_today = thirsty_today = 0;
+    for (int& c : free_cures_today) c = 0;
     shop_pick_cache.clear();
 
     demographics_daily(*this);   // aging, deaths, births, marriages, trades

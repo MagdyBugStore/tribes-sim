@@ -660,6 +660,25 @@ void consumption(World& w) {
                     }
             }
         }
+        {
+            // The penniless sick: the Bayt al-Mal pays the hakim's fee
+            // (endowment-funded treatment, S9 in docs/REALISM_AUDIT.md).
+            // ASSUMPTION (not documented for a desert camp): the same custom,
+            // at most 15 patients a day per tribe.
+            if (p.sick && p.pouch <= 15 && w.bayt.own_funds() > 200 &&
+                w.free_cures_today[static_cast<size_t>(p.tribe) % 8] < 15) {
+                for (auto& q : w.people)
+                    if (q.alive && q.role == "Hakim" && q.tribe == p.tribe) {
+                        if (transfer(w, bayt_acc(), person_acc(q.id), 5.0,
+                                     "free healing (endowment)", false)) {
+                            p.health = clampd(p.health + 18, 0, 100);
+                            p.sick_days = std::max(0, p.sick_days - 2);
+                            w.free_cures_today[static_cast<size_t>(p.tribe) % 8]++;
+                        }
+                        break;
+                    }
+            }
+        }
         // Monthly household goods: cloth, pottery, oil, tools, sandals.
         if (p.age() >= COMING_OF_AGE && p.pouch > 60) {
             for (int item : {w.ix.cloth, w.ix.pottery, w.ix.oil, w.ix.tools,

@@ -30,9 +30,11 @@ const P = (x, y) => [x * S, y * S];
 // objects: [kind, tribe, id, x, y, radius, ?]
 const rnd = (() => { let a = 7; return () => ((a = (a * 9301 + 49297) % 233280) / 233280); })();
 const stockTot = market ? market.items.reduce((a, i) => a + i.shop_stock, 0) : 0, stockLvl = Math.max(0.05, Math.min(1, Math.log10(stockTot + 1) / 5.5)); const blds = []; const counts = {}; const zonePos = {}; const SC = 0.25; // building scale vs world metre
+// building scale vs people (person = 0.5 units = 1.7 m, so 1 unit = 3.4 m): same 0.3 as homes for stalls, wells, ovens; larger public buildings and trees; flat fields keep the old 0.75 so they still fill their zones
+const KSC = { mosque: 0.45, majlis: 0.4, grove: 0.45, pasture: 0.45, field: 0.75 };
 const mk = { home: (o, i) => (o[1] === 0 ? B.house(i % 3) : B.tent(i % 3)), mosque: () => B.mosque(), majlis: () => B.majlis(), suq: () => B.stall(1, stockLvl), shop: (o, i) => B.stall(i, stockLvl), well: (o) => B.well(wellLvl(o[1])), field: () => B.field(0.6), grove: (o, i) => B.palm(i % 3), pasture: (o, i) => B.acacia(i % 3), mill: () => B.mill(), oven: () => B.oven(), smithy: () => B.smithy(), salt_pan: () => B.saltPan(0.7), bayt_al_mal: () => B.granary(granLvl), school: () => B.house(1), clinic: () => B.house(0), dairy: () => B.house(2), loom: () => B.house(0), tannery: () => B.house(1), caravanserai: () => B.majlis(), gate: () => B.flag() };
 map.objects.forEach((o, i) => { const k = o[0]; counts[k] = (counts[k] || 0) + 1; (zonePos[k] ||= []).push(o);
-  const f = mk[k]; if (!f) return; const g = f(o, i); const [x, z] = P(o[3], o[4]); g.position.set(x, 0, z); g.rotation.y = rnd() * 6.28; g.scale.setScalar((k === 'home' ? (o[1] === 0 ? 0.28 : 0.3) : SC * 3) * (0.85 + rnd() * 0.3)); sc.add(g); g.userData.o = o; blds.push(g); });
+  const f = mk[k]; if (!f) return; const g = f(o, i); const [x, z] = P(o[3], o[4]); g.position.set(x, 0, z); g.rotation.y = rnd() * 6.28; g.scale.setScalar((k === 'home' ? (o[1] === 0 ? 0.28 : 0.3) : (KSC[k] ?? 0.3)) * (0.85 + rnd() * 0.3)); sc.add(g); g.userData.o = o; blds.push(g); });
 // static batching: bake every static building mesh into one mesh per material; originals stay (hidden) only for click picking
 { sc.updateMatrixWorld(true); const buckets = new Map(); const key = m => (m.map ? m.map.uuid : '-') + '|' + (m.color ? m.color.getHex() : 0) + '|' + m.type + '|' + (m.transparent ? 1 : 0) + (m.opacity ?? 1) + (m.side ?? 0);
   blds.forEach(g => g.traverse(m => { if (!m.isMesh || !m.visible || m.name === 'smoke' || m.name === 'water' || m.name === 'blades' || m.name === 'flag' || m.name === 'lamp' || Array.isArray(m.material)) return; const geo = m.geometry.index ? m.geometry : null; let gg = m.geometry.clone(); gg.applyMatrix4(m.matrixWorld); const k = key(m.material); let b = buckets.get(k); if (!b) buckets.set(k, b = { mat: m.material, geos: [] }); b.geos.push(gg); m.visible = false; }));
@@ -62,7 +64,7 @@ function updatePeople() { if (!SP) return; const h0 = Math.floor(simHour) % 24, 
 const PK = []; let fbxOK = false; const NP2 = SP ? SP.length : 0;
 if (SP && q.get('people3d') !== '0') try {
   const CH = 'assets/characters/Ultimate%20Animated%20Character%20Pack%20-%20Nov%202019/FBX/';
-  for (const [name, file, hh] of [['male', 'Casual_Male.fbx', 2.9], ['female', 'Casual_Female.fbx', 2.7]]) {
+  for (const [name, file, hh] of [['male', 'Casual_Male.fbx', 0.5], ['female', 'Casual_Female.fbx', 0.47]]) {
     const b = await bake(CH + file, CLIPS, hh); b.names = b.clips.map(c => c.name); const d = decimate(b, 9); const k = { name, b, far: d, near: { g: b.g.clone(), R: b.R, tex: b.tex, V: b.V } };
     k.near.g.setAttribute('vid', new THREE.BufferAttribute(Float32Array.from({ length: b.V }, (_, i) => i), 1)); k.near.g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e5); d.g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e5);
     for (const lod of ['near', 'far']) { const L = k[lod], im = new THREE.InstancedMesh(L.g, vatMaterial(L.tex, L.R, b.map, lod === 'far', { kind: name === 'female' ? 'f' : 'm', y0: b.y0, h: b.hGeom, face: +(q.get('face') ?? 1) }), NP2); im.count = 0; im.frustumCulled = false; im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(NP2 * 3), 3);

@@ -96,6 +96,14 @@ bar2(); setInterval(bar2, 3000); setInterval(events, 3000);
 let spd = 0, paused = false, syncAt = 0;
 async function syncClock() { if (!live || q.has('hour') || q.get('sync') === '0') return; try { const [p, st] = await Promise.all([fetch(API + '/api/person/0').then(r => r.json()), fetch(API + '/api/state').then(r => r.json())]); simHour = p.hour + 0.5; spd = st.seconds_per_day; paused = st.paused; syncAt = performance.now(); animate = false; } catch (e) {} }
 syncClock(); setInterval(syncClock, 5000);
+// Build animation: new wells/fields/homes that appear in /api/map while running rise out of the ground over ~4 s.
+const known = new Set(map.objects.map(o => o.slice(0, 5).join(',')));
+const rising = [];
+function addBuilt(o) { const k = o[0], f = mk[k]; if (!f) return; const g = f(o, blds.length); const [x, z] = P(o[3], o[4]); const tgt = (k === 'home' ? (o[1] === 0 ? 0.28 : 0.3) : SC * 3); g.position.set(x, 0, z); g.rotation.y = rnd() * 6.28; g.scale.setScalar(0.001); sc.add(g); g.userData.o = o; blds.push(g); (zonePos[k] ||= []).push(o); rising.push({ g, tgt, t0: performance.now() }); }
+setInterval(() => { const now = performance.now(); for (let i = rising.length - 1; i >= 0; i--) { const r = rising[i], t = Math.min(1, (now - r.t0) / 4000); r.g.scale.setScalar(Math.max(0.001, r.tgt * (1 - Math.pow(1 - t, 3)))); r.g.position.y = (1 - t) * -0.5; if (t >= 1) { r.g.position.y = 0; rising.splice(i, 1); } } }, 50);
+window.__addObj = addBuilt;
+if (live) setInterval(async () => { try { const m = await (await fetch(API + '/api/map')).json(); for (const o of m.objects) { const key = o.slice(0, 5).join(','); if (!known.has(key)) { known.add(key); addBuilt(o); } } } catch (e) {} }, 6000);
+
 const ctl = b => fetch(API + '/api/control', { method: 'POST', body: JSON.stringify(b) }).catch(() => {});
 document.querySelectorAll('#top button').forEach(b => b.onclick = async () => { const k = +b.dataset.s; if (k === 0) return ctl({ action: 'pause' }); await ctl({ action: 'speed', value: 20 / k }); ctl({ action: 'resume' }); });
 let followIdx = null; let lastT = performance.now();

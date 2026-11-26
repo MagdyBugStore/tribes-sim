@@ -1,0 +1,203 @@
+DIAGNOSE: 360 days (1.00 sim years of 360 days), start pop 1000, end pop 681
+births 72, deaths 391, weddings 65
+crude birth rate 85.7 per 1000/yr, crude death rate 465.2 per 1000/yr
+mean hungry per day 122.0, mean thirsty per day 61.2
+
+Deaths by cause:
+  childbirth: 1
+  childhood illness: 13
+  illness: 365
+  old age: 12
+Deaths by age group (360-day years):
+  0-4: 38 (10%)
+  5-14: 86 (22%)
+  15-44: 161 (41%)
+  45-64: 74 (19%)
+  65+: 32 (8%)
+Deaths by role (deaths / people ever with that role at end):
+  Ajer: 9
+  Baker: 59
+  CamelDriver: 4
+  Caravaneer: 3
+  Child: 63
+  Dairyman: 25
+  Elder: 40
+  Fallah: 22
+  Faris: 6
+  Haddad: 1
+  Hakim: 1
+  Haris: 1
+  Hattab: 1
+  Herder: 2
+  Imam: 1
+  Jazzar: 2
+  Khaddam: 1
+  Khazin: 1
+  Miller: 1
+  Muallim: 3
+  Muzayyin: 2
+  Nakhali: 18
+  SaltDigger: 6
+  Shair: 1
+  Sheikh: 1
+  Tajir: 1
+  Tanner: 11
+  Tilmidh: 66
+  Weaver: 24
+  WellDigger: 1
+  WellKeeper: 14
+Deaths by tribe:
+  Banu Amir: 37
+  Banu Asad: 82
+  Banu Ghatafan: 19
+  Banu Kalb: 75
+  Banu Sulaym: 102
+  Banu Taym: 76
+
+Births by mother's age (mothers still alive, 58 births):
+  0-4: 0
+  5-14: 0
+  15-44: 58
+  45-64: 0
+  65+: 0
+
+First 90 days, average shop price (bread, water, dates, wheat) every 10 days:
+  day 1: bread 0.59  water 0.050  dates 1.88  wheat 1.14
+  day 11: bread 0.96  water 0.050  dates 1.00  wheat 1.19
+  day 21: bread 0.94  water 0.050  dates 1.00  wheat 2.46
+  day 31: bread 0.80  water 0.050  dates 1.00  wheat 3.27
+  day 41: bread 0.69  water 0.050  dates 1.00  wheat 3.42
+  day 51: bread 0.55  water 0.050  dates 1.00  wheat 3.42
+  day 61: bread 0.48  water 0.050  dates 1.00  wheat 3.45
+  day 71: bread 0.55  water 0.050  dates 1.00  wheat 3.53
+  day 81: bread 0.60  water 0.050  dates 1.00  wheat 3.45
+
+Mean pouch by role at the end (dirhams):
+  Ajer (12): 4.5
+  Baker (10): 1.2
+  CamelDriver (5): 0.0
+  CamelHerder (16): 95.1
+  Caravaneer (5): 0.4
+  Child (142): 5.7
+  Dairyman (22): 0.8
+  Dalil (4): 3.0
+  Elder (35): 2.8
+  Falconer (5): 31.9
+  Fallah (41): 10.2
+  Faris (7): 14.9
+  GrandSheikh (1): 0.1
+  Haddad (7): 2.4
+  Hakawati (4): 184.8
+  Hakim (7): 269.4
+  Haris (5): 35.7
+  Hattab (18): 325.2
+  Herder (48): 200.9
+  Hunter (17): 431.0
+  Imam (4): 13.9
+  Jazzar (12): 0.7
+  Khaddam (8): 12.7
+  Khazin (4): 5.1
+  Miller (11): 36.9
+  Muallim (6): 15.9
+  Muezzin (4): 4.7
+  Muzayyin (3): 1.1
+  Nakhali (38): 25.6
+  Overseer (4): 40.7
+  Qabila (4): 181.7
+  Qadi (3): 23.0
+  SaltDigger (10): 0.8
+  Shair (4): 26.1
+  Sheikh (6): 93.5
+  Tajir (24): 817.7
+  Tanner (5): 1.0
+  Tilmidh (75): 0.5
+  Weaver (32): 1.8
+  WellDigger (5): 10.7
+  WellKeeper (8): 470.8
+Hungry now (hunger < 30) by wealth decile (1 = poorest):
+  decile 1: 34 of 68 hungry (pouch 0.0 to 0.0)
+  decile 2: 35 of 68 hungry (pouch 0.0 to 0.0)
+  decile 3: 39 of 68 hungry (pouch 0.0 to 0.0)
+  decile 4: 37 of 68 hungry (pouch 0.0 to 0.0)
+  decile 5: 20 of 68 hungry (pouch 0.0 to 1.6)
+  decile 6: 6 of 68 hungry (pouch 1.6 to 4.8)
+  decile 7: 8 of 68 hungry (pouch 4.8 to 8.0)
+  decile 8: 15 of 68 hungry (pouch 8.0 to 12.0)
+  decile 9: 1 of 68 hungry (pouch 12.0 to 63.4)
+  decile 10: 0 of 69 hungry (pouch 63.7 to 2067.5)
+Hungry now by role:
+  Ajer: 4/12
+  Baker: 3/10
+  CamelDriver: 4/5
+  CamelHerder: 2/16
+  Caravaneer: 4/5
+  Child: 53/142
+  Dairyman: 9/22
+  Dalil: 1/4
+  Elder: 8/35
+  Falconer: 1/5
+  Fallah: 17/41
+  Faris: 1/7
+  GrandSheikh: 1/1
+  Haddad: 4/7
+  Hattab: 2/18
+  Herder: 5/48
+  Jazzar: 10/12
+  Khaddam: 1/8
+  Khazin: 1/4
+  Miller: 2/11
+  Muallim: 3/6
+  Muzayyin: 1/3
+  Nakhali: 5/38
+  Overseer: 1/4
+  SaltDigger: 6/10
+  Tajir: 3/24
+  Tanner: 1/5
+  Tilmidh: 26/75
+  Weaver: 13/32
+  WellDigger: 1/5
+  WellKeeper: 2/8
+Hungry now by tribe:
+  Banu Taym: 15/148
+  Banu Asad: 48/121
+  Banu Kalb: 51/131
+  Banu Amir: 39/78
+  Banu Sulaym: 20/153
+  Banu Ghatafan: 22/50
+
+Where the money sits every 30 days (pouches, Bayt al-Mal, Majlis, shop tills):
+  day 0: pouches 58171  bayt 17698  majlis 25000  tills 7200
+  day 30: pouches 87468  bayt 10288  majlis 15415  tills 8971
+  day 60: pouches 117026  bayt 10453  majlis 4479  tills 4164
+  day 90: pouches 137261  bayt 15638  majlis 142  tills 3796
+  day 120: pouches 138093  bayt 18809  majlis 335  tills 4054
+  day 150: pouches 125752  bayt 20403  majlis 322  tills 7902
+  day 180: pouches 123976  bayt 20645  majlis 259  tills 3325
+  day 210: pouches 121461  bayt 19837  majlis 18320  tills 6417
+  day 240: pouches 117240  bayt 18933  majlis 54882  tills 3914
+  day 270: pouches 102108  bayt 16795  majlis 75059  tills 4000
+  day 300: pouches 86672  bayt 15072  majlis 92614  tills 3704
+  day 330: pouches 71331  bayt 14131  majlis 108544  tills 4040
+  day 360: pouches 55717  bayt 12002  majlis 127041  tills 3302
+
+Money flow by reason (dirhams, whole run):
+  purchase: dates: 379552 (9.7%)
+  sadaqah: 234589 (6.0%)
+  the sheikh's tent: 230016 (5.9%)
+  purchase: bread: 204869 (5.3%)
+  sale: flour: 189297 (4.9%)
+  grove share of the majlis: 177945 (4.6%)
+  purchase: flour: 174097 (4.5%)
+  majlis wage: 173666 (4.5%)
+  sale: bread: 172218 (4.4%)
+  shopkeeper wage: 168036 (4.3%)
+  dates from the grove: 166425 (4.3%)
+  purchase: wheat: 147666 (3.8%)
+  purchase: firewood: 92386 (2.4%)
+  export: dates: 90612 (2.3%)
+  family support: 84425 (2.2%)
+  suq toll: 80345 (2.1%)
+  sale: meat: 77912 (2.0%)
+  purchase: meat: 75516 (1.9%)
+  sale: milk: 73816 (1.9%)
+  sale: firewood: 73802 (1.9%)

@@ -69,3 +69,21 @@ Full texts read this time:
 Limits, stated plainly: the sources show both customs existed, not which of this simulation's tribes follows which. The even/odd split is a modelling choice. The treasury is still one shared account, so an open-tent tribe spends from the common purse in proportion to its population. Quantities (reserve 5000, relief 4 dirhams) are not sourced.
 
 Result (diagnose, 1000 people, 360 days): seed 42 death rate 465 to 401 per 1000; seed 2 635 to 404; seed 3 178 to 352 (worse). Single runs are very noisy: any change moves the global RNG stream, so these do not show an effect. All are still about 10 times the 35 to 40 per 1000 of S1. This change does not fix the death rate and no claim is made that it does. The main cause (hungry penniless people dying of "illness") is still open.
+
+## Children's education: kuttab / maktab (not a modern school)
+Owner's request (user message, relayed by the coordinating agent, 26 Nov): research how children were taught then and build the code on it.
+
+Sources read in full:
+- S6: Encyclopaedia Iranica, "Education iii. The traditional elementary school": https://www.iranicaonline.org/articles/education-iii/ . Persia (maktab), pre-20th century. Children studied under one teacher (akhund/mulla/mu'allim); curriculum up to about age ten: alphabet, reading and writing, rudiments of arithmetic, above all the Quran and prayer books. No age grades or levels: the teacher called each child in turn, older pupils (khalifa) helped teach younger ones; pupils recited aloud. Hours "from early morning until sunset" for those who stayed, but maktabs for commoners "closed at noon to allow children to spend the rest of the day helping with the family trade or household chores". Pupils brought lunch and gave a share to the teacher; families gave a gift at milestones. Corporal punishment was common. Many teachers were semi-literate and taught recitation only; talented pupils went on to the madrasa. Maktabs served relatively more girls than boys with rudimentary education.
+- S7: Re-Evaluating Early Memorization of the Quran in Medieval Muslim Cultures (MDPI Religions 13(2), 2022): https://www.mdpi.com/2077-1444/13/2/179 . In kuttabs the chief emphasis was learning the Quran by heart, with literacy and arithmetic secondary. Memorization at an early age was given priority across the sources; some parents also used it as a way to keep young children occupied.
+
+| Fact | Source | Simulation before | Verdict | Action |
+|---|---|---|---|---|
+| Teaching starts early morning | S6 | study 8:00-12:00 | (b) small gap | study 6:00-12:00 except the 7:00 breakfast |
+| Commoners' school closes at noon; afternoon is family work | S6 | afternoon play, chores 16-17 | (a) | afternoon chores 15:00-17:00 (family trade/household) |
+| Girls attended too | S6 | all children study | matches | none |
+| Quran memorization is the core | S7, S6 | one "study" activity | not modelled | no literacy or memorization state exists |
+| Mixed ages, individual turns, older pupils teach younger | S6 | none | not modelled | not implemented |
+| Fees in kind and gifts to teacher; teacher paid by families | S6 | Muallim paid by the Majlis (roles.csv) | (b) candidate | not changed, needs a source on the Arabian/Egyptian setting |
+
+Limits, stated plainly: S6 describes Persia, S7 the medieval Islamic world in general. Neither describes a Najdi Bedouin camp, where formal schooling for nomad children was probably rare; that is unverified. The change is only a schedule change. Not implemented: literacy or memorization progress, pupil teachers, in-kind fees, play/hours variation by class.

@@ -240,9 +240,12 @@ std::vector<Activity> schedule_for(const World& w, const Person& p, int day) {
             const bool night = little ? (h >= 19 || h < 6) : (h >= 20 || h < 5);
             Activity a = S(PLAY);
             if (night) a = S(SLEEP);
-            else if (!little && !friday && h >= 8 && h <= 12) a = S(STUDY);
+            // Kuttab/maktab day (S6 Iranica): from early morning, closing at
+            // noon for commoners' children, who then help the family trade
+            // or household. Friday off (the Jumu'ah day, as before).
+            else if (!little && !friday && h >= 6 && h <= 12 && h != 7) a = S(STUDY);
             else if (h == LUNCH || h == 19 || h == 7) a = S(EAT_HOME);
-            else if (!little && h >= 16 && h <= 17) a = S(HOUSEWORK);
+            else if (!little && h >= 15 && h <= 17) a = S(HOUSEWORK);
             if (p.sick && a.kind != ActKind::Sleep) a = S(REST_SICK);
             if (age >= PRAYER_AGE && !night) {
                 if (h == FAJR || h == DHUHR || h == ASR || h == MAGHRIB || h == ISHA)

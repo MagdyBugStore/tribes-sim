@@ -66,11 +66,14 @@ function vatMaterial(tex, R, map, far) {
   m.customProgramCacheKey = () => (far ? 'vatF' : 'vatN') + (map ? 'm' : '') + R;
   m.onBeforeCompile = (s) => {
     s.uniforms.uVat = { value: tex }; s.uniforms.uTime = uTime; s.uniforms.uR = { value: R };
-    s.vertexShader = 'attribute float vid; attribute vec4 iAnim; uniform sampler2D uVat; uniform float uTime; uniform float uR;\n' + s.vertexShader.replace('#include <begin_vertex>', `
+    s.vertexShader = 'attribute float vid; attribute vec4 iAnim; attribute vec4 iPrev; uniform sampler2D uVat; uniform float uTime; uniform float uR;\n' + s.vertexShader.replace('#include <begin_vertex>', `
       float ph = fract(uTime * iAnim.z + iAnim.w) * float(${FR}); float f0 = floor(ph); float f1 = mod(f0 + 1.0, float(${FR})); float fr = ph - f0;
       float vx = mod(vid, ${TEXW}.0), vy = floor(vid / ${TEXW}.0);
       vec3 p0 = texelFetch(uVat, ivec2(int(vx), int((iAnim.x + f0) * uR + vy)), 0).xyz; vec3 p1 = texelFetch(uVat, ivec2(int(vx), int((iAnim.x + f1) * uR + vy)), 0).xyz;
-      vec3 transformed = mix(p0, p1, fr);`);
+      vec3 transformed = mix(p0, p1, fr);
+      if (iPrev.w > 0.0) { float ph2 = fract(uTime * iPrev.y + iPrev.z) * float(${FR}); float g0 = floor(ph2); float g1 = mod(g0 + 1.0, float(${FR})); float gr = ph2 - g0;
+        vec3 q0 = texelFetch(uVat, ivec2(int(vx), int((iPrev.x + g0) * uR + vy)), 0).xyz; vec3 q1 = texelFetch(uVat, ivec2(int(vx), int((iPrev.x + g1) * uR + vy)), 0).xyz;
+        transformed = mix(transformed, mix(q0, q1, gr), iPrev.w); }`);
   };
   return m;
 }
@@ -91,7 +94,7 @@ const GROUP_COL = [0xffe08a, 0x59b35a, 0xf0902e, 0xb37be0, 0xef5b5b, 0x4a90e2, 0
 const NMAX = 4600;
 for (const k of kinds) for (const lod of ['near', 'far']) {
   const L = k[lod], im = new THREE.InstancedMesh(L.g, vatMaterial(L.tex, L.R, k.b.map, lod === 'far'), NMAX); im.count = 0; im.frustumCulled = false;
-  const a = new THREE.InstancedBufferAttribute(new Float32Array(NMAX * 4), 4); L.g.setAttribute('iAnim', a); L.attr = a; L.im = im; im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(NMAX * 3), 3); scene.add(im);
+  const a = new THREE.InstancedBufferAttribute(new Float32Array(NMAX * 4), 4); L.g.setAttribute('iAnim', a); L.attr = a; const a2 = new THREE.InstancedBufferAttribute(new Float32Array(NMAX * 4), 4); L.g.setAttribute('iPrev', a2); L.attr2 = a2; L.im = im; im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(NMAX * 3), 3); scene.add(im);
 }
 const baseT = performance.now() - t0;
 // entities: kind, position, heading, speed, state, tint, size
@@ -125,12 +128,13 @@ function frame() {
     if (e.moving) { const dx = e.tx - e.x, dz = e.tz - e.z, d = Math.hypot(dx, dz); if (d < 1) e.until = 0; else { const nx = e.x + dx / d * e.sp * dt, nz = e.z + dz / d * e.sp * dt; if (Math.hypot(nx - POND.x, nz - POND.z) < POND.r) { e.until = 0; } else { e.x = nx; e.z = nz; } const ta = Math.atan2(dx, dz); let da = ta - e.a; da = Math.atan2(Math.sin(da), Math.cos(da)); e.a += da * Math.min(1, dt * 6); } }
     const k = kinds[e.k], far = Math.hypot(e.x - cam.position.x, e.z - cam.position.z) > LODD + camDist * 0.15, L = far ? k.far : k.near, i = L.im.count++;
     const sc = k.b.scale * e.sz;  q.setFromAxisAngle(up, e.a); p3.set(e.x, -k.b.y0 * sc, e.z); s3.set(sc, sc, sc); m4.compose(p3, q, s3); L.im.setMatrixAt(i, m4); L.im.instanceColor.setXYZ(i, e.tint.r, e.tint.g, e.tint.b);
-    const ci = CLIPIDX(k, e.st), dur = k.b.dur[ci]; L.attr.setXYZW(i, ci * FR, 0, 1 / dur, e.ph);
+    const ci = CLIPIDX(k, e.st), dur = k.b.dur[ci]; if (e.ci === undefined) { e.ci = ci; e.pci = ci; e.bl = 0; } else if (ci !== e.ci) { e.pci = e.ci; e.ci = ci; e.bl = 1; e.pph = e.ph; } if (e.bl > 0) e.bl = Math.max(0, e.bl - dt / 0.3);
+    L.attr.setXYZW(i, ci * FR, 0, 1 / dur, e.ph); L.attr2.setXYZW(i, e.pci * FR, 1 / k.b.dur[e.pci], e.ph, e.bl);
   }
-  let tris = 0; for (const k of kinds) for (const lod of ['near', 'far']) { const L = k[lod], im = L.im; im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true; L.attr.needsUpdate = true; im.instanceMatrix.addUpdateRange?.(0, im.count * 16); const idx = L.g.index ? L.g.index.count : L.V; tris += im.count * idx / 3; }
+  let tris = 0; for (const k of kinds) for (const lod of ['near', 'far']) { const L = k[lod], im = L.im; im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true; L.attr.needsUpdate = true; L.attr2.needsUpdate = true; im.instanceMatrix.addUpdateRange?.(0, im.count * 16); const idx = L.g.index ? L.g.index.count : L.V; tris += im.count * idx / 3; }
   jsAcc += performance.now() - js0; jsN++;
   r.render(scene, cam); frames++; acc += dt;
-  if (acc >= 2) { const nearN = kinds.reduce((s, k) => s + k.near.im.count, 0); window.__bench = { fps: +(frames / acc).toFixed(1), jsMs: +(jsAcc / jsN).toFixed(2), people: NP, animals: NA, near: nearN, far: N - nearN, tris: Math.round(tris), bakeMs: Math.round(baseT), farTris: kinds.map((k) => k.name + ':' + k.far.tris + '/' + k.b.V / 3 + ' h' + k.b.hGeom.toFixed(1) + ' n' + k.far.V + ' sc' + k.b.scale.toFixed(4)) }; hud.textContent = `${NP} people, ${NA} animals (1 model = ${HERD} animal${HERD > 1 ? 's' : ''}) | ${window.__bench.fps} fps (software GL: not representative) | JS ${window.__bench.jsMs} ms | tris ${(tris / 1e6).toFixed(1)}M | near ${nearN}`; frames = 0; acc = 0; jsAcc = 0; jsN = 0; }
+  if (acc >= 2) { const nearN = kinds.reduce((s, k) => s + k.near.im.count, 0); window.__bench = { blending: ent.filter((e) => e.bl > 0).length, fps: +(frames / acc).toFixed(1), jsMs: +(jsAcc / jsN).toFixed(2), people: NP, animals: NA, near: nearN, far: N - nearN, tris: Math.round(tris), bakeMs: Math.round(baseT), farTris: kinds.map((k) => k.name + ':' + k.far.tris + '/' + k.b.V / 3 + ' h' + k.b.hGeom.toFixed(1) + ' n' + k.far.V + ' sc' + k.b.scale.toFixed(4)) }; hud.textContent = `${NP} people, ${NA} animals (1 model = ${HERD} animal${HERD > 1 ? 's' : ''}) | ${window.__bench.fps} fps (software GL: not representative) | JS ${window.__bench.jsMs} ms | tris ${(tris / 1e6).toFixed(1)}M | near ${nearN}`; frames = 0; acc = 0; jsAcc = 0; jsN = 0; }
 }
 r.setAnimationLoop(frame);
 </script>

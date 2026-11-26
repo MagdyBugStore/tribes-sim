@@ -358,7 +358,14 @@ Pt position_of(const World& w, const ValleyMap& m, const Person& p, Zone z) {
         case Zone::Grove: return jitter(p, 3, 18, of_tribe(MapKind::Grove, 3));
         case Zone::Pasture: return jitter(p, 4, 45, of_tribe(MapKind::Pasture, 4));
         case Zone::Suq: return jitter(p, 5, 45, m.suq);
-        case Zone::Mosque: return jitter(p, 6, 14, obj(MapKind::Mosque, 0));
+        case Zone::Mosque: {
+            // Worshippers stand in rows in the courtyard beside (west of)
+            // the building, not inside its walls.
+            auto c = obj(MapKind::Mosque, 0);
+            const double fx = hash01(static_cast<uint64_t>(p.id) + 6, 61);
+            const double fy = hash01(static_cast<uint64_t>(p.id) + 6, 62);
+            return {c.x - 17.0 - fx * 14.0, c.y + (fy - 0.5) * 26.0};
+        }
         case Zone::Majlis: return jitter(p, 7, 14, obj(MapKind::Majlis, 0));
         case Zone::School: return jitter(p, 8, 8, obj(MapKind::School, 0));
         case Zone::Clinic: return jitter(p, 9, 6, obj(MapKind::Clinic, 0));

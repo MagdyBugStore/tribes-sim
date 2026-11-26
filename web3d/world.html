@@ -9,10 +9,12 @@ const q = new URLSearchParams(location.search); const LANG = q.get('lang') === '
 // data source: live API, or a JSON-lines replay file: {"type":"map","data":{..}} / {"type":"people","data":{..}} per line
 async function load() {
   if (replay) { const lines = (await (await fetch(replay)).text()).trim().split('\n').map(JSON.parse); return { map: lines.find(l => l.type === 'map').data, peopleFrames: lines.filter(l => l.type === 'people').map(l => l.data), sch: (lines.find(l => l.type === 'schedules') || {}).data }; }
-  const [map, pe, sch, herds, market, cars] = await Promise.all([fetch(API + '/api/map').then(r => r.json()), fetch(API + '/api/people').then(r => r.json()), fetch(API + '/api/schedules').then(r => r.json()), fetch(API + '/api/herds').then(r => r.json()), fetch(API + '/api/market').then(r => r.json()), fetch(API + '/api/caravans').then(r => r.json())]);
-  return { map, peopleFrames: [pe], sch, herds, market, cars, live: true };
+  const [map, pe, sch, herds, market, cars, lev] = await Promise.all([fetch(API + '/api/map').then(r => r.json()), fetch(API + '/api/people').then(r => r.json()), fetch(API + '/api/schedules').then(r => r.json()), fetch(API + '/api/herds').then(r => r.json()), fetch(API + '/api/market').then(r => r.json()), fetch(API + '/api/caravans').then(r => r.json()), fetch(API + '/api/levels').then(r => r.json()).catch(() => null)]);
+  return { map, peopleFrames: [pe], sch, herds, market, cars, lev, live: true };
 }
-const { map, peopleFrames, live, sch, herds, market, cars } = await load();
+const { map, peopleFrames, live, sch, herds, market, cars, lev } = await load();
+// live fill levels from /api/levels: cistern vs one day's recharge, granary food vs 15 kg per person (display scale)
+const wellLvl = i => { const w = lev && lev.wells.find(x => x.id === i); return w ? Math.max(0.1, Math.min(1, w.liters / Math.max(1, w.yield_day * 4))) : 0.7; }, granLvl = lev ? Math.max(0.05, Math.min(1, lev.granary.food_kg / Math.max(1, lev.granary.population * 15))) : 0.6;
 const S = 0.1; // world metres -> scene units (map is 2000x1400)
 const r = new THREE.WebGLRenderer(); r.setSize(innerWidth, innerHeight); document.body.prepend(r.domElement);
 const sc = new THREE.Scene(); const night = q.get('night') === '1'; const hour = +(q.get('hour') ?? 12);
@@ -25,7 +27,7 @@ const P = (x, y) => [x * S, y * S];
 // objects: [kind, tribe, id, x, y, radius, ?]
 const rnd = (() => { let a = 7; return () => ((a = (a * 9301 + 49297) % 233280) / 233280); })();
 const stockTot = market ? market.items.reduce((a, i) => a + i.shop_stock, 0) : 0, stockLvl = Math.max(0.05, Math.min(1, Math.log10(stockTot + 1) / 5.5)); const blds = []; const counts = {}; const zonePos = {}; const SC = 0.25; // building scale vs world metre
-const mk = { home: (o, i) => (o[1] === 0 ? B.house(i % 3) : B.tent(i % 3)), mosque: () => B.mosque(), majlis: () => B.majlis(), suq: () => B.stall(1, stockLvl), shop: (o, i) => B.stall(i, stockLvl), well: () => B.well(0.7), field: () => B.field(0.6), grove: (o, i) => B.palm(i % 3), pasture: (o, i) => B.acacia(i % 3), mill: () => B.mill(), oven: () => B.oven(), smithy: () => B.smithy(), salt_pan: () => B.saltPan(0.7), bayt_al_mal: () => B.granary(0.6), school: () => B.house(1), clinic: () => B.house(0), dairy: () => B.house(2), loom: () => B.house(0), tannery: () => B.house(1), caravanserai: () => B.majlis(), gate: () => B.flag() };
+const mk = { home: (o, i) => (o[1] === 0 ? B.house(i % 3) : B.tent(i % 3)), mosque: () => B.mosque(), majlis: () => B.majlis(), suq: () => B.stall(1, stockLvl), shop: (o, i) => B.stall(i, stockLvl), well: (o) => B.well(wellLvl(o[1])), field: () => B.field(0.6), grove: (o, i) => B.palm(i % 3), pasture: (o, i) => B.acacia(i % 3), mill: () => B.mill(), oven: () => B.oven(), smithy: () => B.smithy(), salt_pan: () => B.saltPan(0.7), bayt_al_mal: () => B.granary(granLvl), school: () => B.house(1), clinic: () => B.house(0), dairy: () => B.house(2), loom: () => B.house(0), tannery: () => B.house(1), caravanserai: () => B.majlis(), gate: () => B.flag() };
 map.objects.forEach((o, i) => { const k = o[0]; counts[k] = (counts[k] || 0) + 1; (zonePos[k] ||= []).push(o);
   const f = mk[k]; if (!f) return; const g = f(o, i); const [x, z] = P(o[3], o[4]); g.position.set(x, 0, z); g.rotation.y = rnd() * 6.28; g.scale.setScalar((k === 'home' ? (o[1] === 0 ? 0.28 : 0.3) : SC * 3) * (0.85 + rnd() * 0.3)); sc.add(g); g.userData.o = o; blds.push(g); });
 // people as instanced dots placed at their zone object (hash by id); live = current API frame, hour from ?hour

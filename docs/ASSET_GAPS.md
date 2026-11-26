@@ -12,7 +12,7 @@ To be filled by procedural models or generated textures in the next issues (3D-3
 ## Crowd and animation (issue #14)
 - People clips used: Idle, Walk, Walk_Carry, SitDown, PickUp (map in `web3d/anim_map.js`). No clip for sleeping, praying, praying/prostrating, milking, weaving, cooking.
 - Sheep has only Idle and Jump, so sheep slide in Idle. No camel, goat or donkey models.
-- No clip blending between states. Normals use the bind pose (not animated).
+- Clip blending: done (0.3 s cross-fade in the vertex shader between the previous and current baked clip). Verified only by a counter (36 entities mid-blend) and a no-error render in headless Chrome with software GL; the smoothness itself was not judged by eye. Normals use the bind pose (not animated).
 - Role looks are tint (role group) plus size (child 0.62, elder 0.94). No outfit meshes.
 - Animal counts are not yet read from `/api/herds`; positions are not driven by the real schedules.
 

@@ -2,7 +2,7 @@
 
 بلال
 
-Status: step 1 done (the `--diagnose` report). Steps 2 to 5 (sourced comparison, fixes, tests, README section) are NOT done yet. No model change is made in this PR.
+Status: step 1 done (the `--diagnose` report). Step 2 (sourced comparison) is partly done, below. Fixes, tests and the README section are NOT done yet. No model change is made.
 
 Run: `./tribes --diagnose --people 1000 --seed 42 --days 360`. Full output: `docs/diagnose-seed42-1000.txt`. The report only counts; it changes nothing in the model. The sim year is 360 days.
 
@@ -25,3 +25,20 @@ Run: `./tribes --diagnose --people 1000 --seed 42 --days 360`. Full output: `doc
 
 ## Not done yet
 Sourced comparison table (no source has been verified in this PR), classification (a/b/c) with fixes, the realism tests replacing the Gini test, the README "Realism and sources" section, seeds 2 and 3, and the first-90-days income per role (the model has no per-role income figure, so it needs a wage query).
+
+## Sourced comparison (step 2, partial)
+Sources I opened and read:
+- S1: UN, Population Studies No. 49, "The World Population Situation in 1970" (UN New York 1971): https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/files/documents/2020/Jan/un_1970_the_world_population_situation_in_1970_0.pdf . Says pre-modern death rates below 30 per 1000 were probably rare and averaged 35 to 40 even without calamities; birth rates were rarely below 35 and 40 to 50 were typical. Table 3: less developed regions 1750-1800 birth 41, death 37.
+- S2: Our World in Data, "Global Health" (child mortality section): https://ourworldindata.org/health-inequality . Pre-modern child mortality (before age 5) ranged between 30% and 50%.
+- S3: Our World in Data, "The mortality of children over the long run": https://ourworldindata.org/child-mortality-in-the-past . About 40% of children died before 15 in Sweden 1750-1780, about 45% in France, about half in Bavaria.
+Not verified: Bedouin diet and calories, wage and price ratios, caravan facts, wealth inequality and zakat redistribution (a search found papers on pastoral inequality, e.g. https://doi.org/10.1086/648561, but I did not read them, so nothing is cited from them).
+
+| Fact | Source | Simulation value (seed 42, 1000 people, 360 days) | Verdict | Action |
+|---|---|---|---|---|
+| Death rate 35 to 40 per 1000 typical, rarely below 30 | S1 | 465 | (a) or (b): about 12 times above even a bad average year. Not a named catastrophe in the model | Investigate the cause (below), do not tune |
+| Birth rate 35 to 50 per 1000 | S1 | 86 | (b) candidate: about twice the top of the range. Cause not examined | Investigate |
+| Child mortality before 5 is 30 to 50%, before 15 about 40 to 50% | S2, S3 | Baseline hazard in `demographics.cpp` gives about 18% first year, 6% a year ages 1 to 4, 1.6% a year ages 5 to 14: cumulative about 45% before 15, in line with S3 | (c) for the hazard | Leave |
+| Infants and children should dominate deaths | S3 (implied by the above) | Only 10% under 5 and 32% under 15; 41% are 15 to 44 | Mixed: the founding population has few infants (a founding age structure effect, unverified), and adults die of "illness" from hunger | Check the founding age pyramid |
+
+## Current causal chain (numbers from the diagnose report, not final)
+Wheat price rises from 1.14 to about 3.4 within 40 days, bread follows; the poorest four deciles hold 0.0 dirhams and about half of them are hungry; sickness starts when health falls below 35 and clears only when fed or after a paid hakim visit, so hungry penniless people die of "illness" (365 of 391 deaths). Meanwhile the Majlis balance grows from about 0.3k (day 150) to 127k (day 360) while pouches fall from 125k to 56k. Whether the Majlis accumulation or unpaid market-earning roles (Baker, Dairyman, SaltDigger, CamelDriver, Weaver all average about 1 dirham) is a modelling error still needs checking in the code.

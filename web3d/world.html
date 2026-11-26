@@ -54,11 +54,25 @@ let ids = rows.map(p => p[0]), simHour = +(q.get('hour') ?? 12), animate = q.get
 const SP = sch ? sch.people : null;
 if (SP) { sc.remove(dots); dots = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.25, 0.8, 2, 6), new THREE.MeshLambertMaterial({ color: 0xffffff }), SP.length); SP.forEach((p, i) => dots.setColorAt(i, new THREE.Color(p[1] ? 0x3a6fd8 : 0xd8553a))); ids = SP.map(p => p[0]); sc.add(dots); }
 const stopAt = (p, h) => { const k = ALPHA.indexOf(p[6][((h % 24) + 24) % 24 | 0]); return [p[5][k * 2], p[5][k * 2 + 1]]; };
+// walking: 5 km/h along the road when that is not a big detour, else straight; progress from the hour's start. Paths cached per person and hour.
+const WALK_MH = 5000;
+const ROAD = (() => { const pts = map.road || [], out = []; for (let k = 0; k + 1 < pts.length; k++) { const [x0, y0] = pts[k], [x1, y1] = pts[k + 1], n = Math.max(1, Math.round(Math.hypot(x1 - x0, y1 - y0) / 10)); for (let m = 0; m < n; m++) out.push([x0 + (x1 - x0) * m / n, y0 + (y1 - y0) * m / n]); } if (pts.length) out.push(pts[pts.length - 1]); const cum = [0]; for (let k = 1; k < out.length; k++) cum.push(cum[k - 1] + Math.hypot(out[k][0] - out[k - 1][0], out[k][1] - out[k - 1][1])); return { out, cum }; })();
+const nearRoad = (x, y) => { let bi = 0, bd = 1e18; const o = ROAD.out; for (let k = 0; k < o.length; k++) { const d = (o[k][0] - x) ** 2 + (o[k][1] - y) ** 2; if (d < bd) { bd = d; bi = k; } } return [bi, Math.sqrt(bd)]; };
+function buildPath(a, b) { const direct = Math.hypot(b[0] - a[0], b[1] - a[1]); let pts = [a, b];
+  if (direct > 80 && ROAD.out.length) { const [ia, da] = nearRoad(a[0], a[1]), [ib, db] = nearRoad(b[0], b[1]); const rl = Math.abs(ROAD.cum[ib] - ROAD.cum[ia]); const total = da + rl + db;
+    if (ia !== ib && total < direct * 1.35) { pts = [a]; const st = ia < ib ? 1 : -1; for (let k = ia; k !== ib + st; k += st) pts.push(ROAD.out[k]); pts.push(b); } }
+  const cum = [0]; for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1])); return { pts, cum, L: cum[cum.length - 1] }; }
+function walkPos(P, p, h0, f) { const a = stopAt(p, h0 - 1), b = stopAt(p, h0);
+  if (a[0] === b[0] && a[1] === b[1]) return [b[0], b[1], false, P.ang];
+  if (!P.path || P.pathH !== h0) { P.path = buildPath(a, b); P.pathH = h0; }
+  const { pts, cum, L } = P.path, s = Math.min(L, f * WALK_MH); if (s >= L) return [b[0], b[1], false, P.ang];
+  let k = 1; while (k < cum.length - 1 && cum[k] < s) k++; const seg = cum[k] - cum[k - 1] || 1, u = (s - cum[k - 1]) / seg, A = pts[k - 1], B = pts[k];
+  return [A[0] + (B[0] - A[0]) * u, A[1] + (B[1] - A[1]) * u, true, Math.atan2(B[0] - A[0], B[1] - A[1])]; }
 let tf = -1, fsec = '', fact = ''; const secSel = document.getElementById('fs'), actSel = document.getElementById('fa');
 if (sch) { [...new Set(sch.roles.map(r => r[1]))].forEach(x => secSel.add(new Option(x, x))); sch.acts.forEach(a => actSel.add(new Option(LANG === 'en' ? a[1] : a[2], a[0]))); }
 secSel.onchange = e => fsec = e.target.value; actSel.onchange = e => fact = e.target.value; document.getElementById('ft').onchange = e => tf = +e.target.value;
 function updatePeople() { if (!SP) return; const h0 = Math.floor(simHour) % 24, f = simHour - Math.floor(simHour), zz = {};
-  SP.forEach((p, i) => { const a = stopAt(p, h0 - 1), b = stopAt(p, h0); const t = Math.min(1, f * 3); const x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t; const moving = a[0] !== b[0] || a[1] !== b[1]; tmp.position.set(x * S, 0.6 + (moving ? Math.abs(Math.sin(simHour * 200 + i)) * 0.15 : 0), y * S); const hid = (tf >= 0 && p[1] !== tf) || (fsec && sch.roles[p[4]][1] !== fsec) || (fact && sch.acts[ALPHA.indexOf(p[7][h0])][0] !== fact); tmp.scale.setScalar(hid ? 0.0001 : 2.5); tmp.updateMatrix(); dots.setMatrixAt(i, tmp.matrix); });
+  SP.forEach((p, i) => { const P = pst[i]; const [x, y, moving, ang] = walkPos(P, p, h0, f); P.moving = moving; P.ang = ang; tmp.position.set(x * S, 0.6 + (moving ? Math.abs(Math.sin(simHour * 200 + i)) * 0.15 : 0), y * S); const hid = (tf >= 0 && p[1] !== tf) || (fsec && sch.roles[p[4]][1] !== fsec) || (fact && sch.acts[ALPHA.indexOf(p[7][h0])][0] !== fact); tmp.scale.setScalar(hid ? 0.0001 : 2.5); tmp.updateMatrix(); dots.setMatrixAt(i, tmp.matrix); });
   dots.instanceMatrix.needsUpdate = true; window.__sim = { hour: +simHour.toFixed(2) }; }
 // Quaternius CC0 animated people (VAT-baked, see vat.js). `dots` stays as an invisible proxy: picking, follow-cam and filters read its matrices.
 const PK = []; let fbxOK = false; const NP2 = SP ? SP.length : 0;
@@ -79,8 +93,7 @@ const TRIB = [new THREE.Color(0xffd9c8), new THREE.Color(0xc8dcff)];
 function renderPeople() { if (!fbxOK) return; const now = performance.now(), dt = Math.min(0.1, (now - _t) / 1000); _t = now; vatTime.value = now / 1000;
   for (const k of PK) { k.near.im.count = 0; k.far.im.count = 0; }
   const h0 = Math.floor(simHour) % 24;
-  SP.forEach((p, i) => { dots.getMatrixAt(i, _m); _m.decompose(_p, _q, _s); if (_s.x < 0.01) return; const a = stopAt(p, h0 - 1), b = stopAt(p, h0), moving = a[0] !== b[0] || a[1] !== b[1], P = pst[i];
-    if (moving) P.ang = Math.atan2(b[0] - a[0], b[1] - a[1]);
+  SP.forEach((p, i) => { dots.getMatrixAt(i, _m); _m.decompose(_p, _q, _s); if (_s.x < 0.01) return; const P = pst[i], moving = !!P.moving;
     const act = sch.acts[ALPHA.indexOf(p[7][h0])]; let st = moving ? (/carry|fetch|haul|deliver|travel|caravan/.test(act[0]) ? 'carry' : 'walk') : stateFor(act[0]); if (st === 'hidden') st = 'idle';
     const k = PK[p[2] === 1 ? 1 : 0], L = (Math.hypot(_p.x - cam.position.x, _p.z - cam.position.z) > 60 + cam.position.y * 0.5) ? k.far : k.near, j = L.im.count++;
     const ci = clipOf(k, st); if (P.ci < 0) { P.ci = P.pci = ci; } else if (ci !== P.ci) { P.pci = P.ci; P.ci = ci; P.bl = 1; } if (P.bl > 0) P.bl = Math.max(0, P.bl - dt / 0.3);

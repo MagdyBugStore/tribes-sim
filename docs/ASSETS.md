@@ -44,3 +44,6 @@ Playground: `python3 -m http.server 8000 --directory web3d`, then http://localho
 
 ## Buildings and props (issue #15)
 `web3d/buildings.js` + `web3d/gallery.html`: 18 procedural types (tent, house, mosque, majlis, stall, well, channel, mill, oven, smithy, salt pan, field, palm, acacia, granary, road, flag, lantern), 35 instances. Source: code in this repo (three.js primitives); textures from `tools/gen_textures.py`. No third-party asset was used, so no extra licence. Measured gallery: 3.3k tris, 24.6 fps in software GL (1 vCPU, no GPU, not representative).
+
+## Static batching (issue #15, point 4)
+`web3d/world.html` bakes all static building meshes (696 buildings) into 27 merged meshes, one per material. The original meshes stay hidden in the scene only so clicking a building still works. Measured in headless Chrome with software GL (seed 42, 1000 people): draw calls 1311 to 70. Triangles 85k to 98k, because the merged meshes are no longer frustum-culled. Real-GPU FPS is not measured here. Buildings added later by the build animation are not merged. Moving parts (smoke, flags, water) are not used by this viewer.

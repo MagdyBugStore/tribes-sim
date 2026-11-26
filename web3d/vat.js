@@ -39,13 +39,15 @@ export function decimate(b, div) {
   const tex = new THREE.DataTexture(data, TEXW, R2 * frames, THREE.RGBAFormat, THREE.FloatType); tex.needsUpdate = true; fg.computeVertexNormals();
   return { g: fg, R: R2, tex, V: n, tris: idx.length / 3 };
 }
-export function vatMaterial(tex, R, map, far) {
+export function vatMaterial(tex, R, map, far, garb) {
   if (map) { if (map.channel === undefined) map.channel = 0; map.colorSpace = THREE.SRGBColorSpace; }
   const m = new THREE.MeshLambertMaterial({ map: far ? null : map, color: 0xffffff });
-  m.customProgramCacheKey = () => (far ? 'vatF' : 'vatN') + (map ? 'm' : '') + R;
+  m.customProgramCacheKey = () => (far ? 'vatF' : 'vatN') + (map ? 'm' : '') + R + (garb ? 'g' + garb.kind : '');
   m.onBeforeCompile = (s) => {
+    if (garb) { s.uniforms.uHY = { value: new THREE.Vector2(garb.y0, garb.h) }; s.uniforms.uFace = { value: garb.face }; }
     s.uniforms.uVat = { value: tex }; s.uniforms.uTime = uTime; s.uniforms.uR = { value: R };
-    s.vertexShader = 'attribute float vid; attribute vec4 iAnim; attribute vec4 iPrev; uniform sampler2D uVat; uniform float uTime; uniform float uR;\n' + s.vertexShader.replace('#include <begin_vertex>', `
+    s.vertexShader = (garb ? 'varying vec3 vBind;\n' : '') + 'attribute float vid; attribute vec4 iAnim; attribute vec4 iPrev; uniform sampler2D uVat; uniform float uTime; uniform float uR;\n' + s.vertexShader.replace('#include <begin_vertex>', `
+      ${garb ? 'vBind = position;' : ''}
       float ph = fract(uTime * iAnim.z + iAnim.w) * float(${FR}); float f0 = floor(ph); float f1 = mod(f0 + 1.0, float(${FR})); float fr = ph - f0;
       float vx = mod(vid, ${TEXW}.0), vy = floor(vid / ${TEXW}.0);
       vec3 p0 = texelFetch(uVat, ivec2(int(vx), int((iAnim.x + f0) * uR + vy)), 0).xyz; vec3 p1 = texelFetch(uVat, ivec2(int(vx), int((iAnim.x + f1) * uR + vy)), 0).xyz;
@@ -53,6 +55,16 @@ export function vatMaterial(tex, R, map, far) {
       if (iPrev.w > 0.0) { float ph2 = fract(uTime * iPrev.y + iPrev.z) * float(${FR}); float g0 = floor(ph2); float g1 = mod(g0 + 1.0, float(${FR})); float gr = ph2 - g0;
         vec3 q0 = texelFetch(uVat, ivec2(int(vx), int((iPrev.x + g0) * uR + vy)), 0).xyz; vec3 q1 = texelFetch(uVat, ivec2(int(vx), int((iPrev.x + g1) * uR + vy)), 0).xyz;
         transformed = mix(transformed, mix(q0, q1, gr), iPrev.w); }`);
+    if (garb) s.fragmentShader = 'varying vec3 vBind; uniform vec2 uHY; uniform float uFace;\n' + s.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      { float hh = (vBind.y - uHY.x) / uHY.y; float fz = vBind.z * uFace / uHY.y; vec3 tint = mix(vec3(1.0), vColor.rgb, 0.5);
+        vec3 baseC = ${map && !far ? 'diffuseColor.rgb' : 'vec3(0.8, 0.62, 0.5) * tint'}; float lum = dot(baseC, vec3(0.3, 0.59, 0.11));
+        bool head = hh > 0.84, front = fz > 0.0; vec3 cloth = vec3(0.0); float use = 0.0;
+        ${garb.kind === 'f' ? `
+        if (hh > 0.05 && hh <= 0.84) { cloth = vec3(0.10, 0.09, 0.11) * (0.6 + 0.8 * lum); use = 1.0; }
+        if (head) { bool faceZone = front && hh < 0.955 && abs(vBind.x) / uHY.y < 0.075; if (!faceZone) { cloth = vec3(0.09, 0.08, 0.10) * (0.6 + 0.8 * lum); use = 1.0; } }` : `
+        if (hh > 0.05 && hh <= 0.84) { cloth = vec3(0.93, 0.90, 0.82) * tint * (0.65 + 0.55 * lum); use = 1.0; }
+        if (head) { bool faceZone = front && hh < 0.955 && abs(vBind.x) / uHY.y < 0.075; if (!faceZone) { cloth = (hh > 0.945 && hh < 0.965 ? vec3(0.08) : vec3(0.97, 0.96, 0.93) * tint) * (0.75 + 0.35 * lum); use = 1.0; } }`}
+        diffuseColor.rgb = mix(baseC, cloth, use); }`);
   };
   return m;
 }

@@ -65,7 +65,7 @@ if (SP && q.get('people3d') !== '0') try {
   for (const [name, file, hh] of [['male', 'Casual_Male.fbx', 2.9], ['female', 'Casual_Female.fbx', 2.7]]) {
     const b = await bake(CH + file, CLIPS, hh); b.names = b.clips.map(c => c.name); const d = decimate(b, 9); const k = { name, b, far: d, near: { g: b.g.clone(), R: b.R, tex: b.tex, V: b.V } };
     k.near.g.setAttribute('vid', new THREE.BufferAttribute(Float32Array.from({ length: b.V }, (_, i) => i), 1)); k.near.g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e5); d.g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e5);
-    for (const lod of ['near', 'far']) { const L = k[lod], im = new THREE.InstancedMesh(L.g, vatMaterial(L.tex, L.R, b.map, lod === 'far'), NP2); im.count = 0; im.frustumCulled = false; im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(NP2 * 3), 3);
+    for (const lod of ['near', 'far']) { const L = k[lod], im = new THREE.InstancedMesh(L.g, vatMaterial(L.tex, L.R, b.map, lod === 'far', { kind: name === 'female' ? 'f' : 'm', y0: b.y0, h: b.hGeom, face: +(q.get('face') ?? 1) }), NP2); im.count = 0; im.frustumCulled = false; im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(NP2 * 3), 3);
       L.a1 = new THREE.InstancedBufferAttribute(new Float32Array(NP2 * 4), 4); L.a2 = new THREE.InstancedBufferAttribute(new Float32Array(NP2 * 4), 4); L.g.setAttribute('iAnim', L.a1); L.g.setAttribute('iPrev', L.a2); L.im = im; sc.add(im); }
     PK.push(k); }
   fbxOK = true; dots.visible = false;

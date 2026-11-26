@@ -132,7 +132,7 @@ struct Mint {
 
 // Named item indices, resolved once from the data file.
 struct Idx {
-    int water, bread, wheat, flour, bran, dates, milk, laban, cheese, meat,
+    int water, bread, wheat, flour, bran, dates, milk, laban, cheese, samn, meat,
         salt, hide, leather, sandals, waterskin, wool, yarn, rug, tent, iron,
         tools, blade, pottery, cloth, silk, incense, spice, sugar, coffee,
         oil, firewood;

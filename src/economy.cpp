@@ -558,7 +558,7 @@ void consumption(World& w) {
         if (p.hunger < 70) {
             static const int order_cap = 5;
             int tried = 0;
-            for (int item : {w.ix.bread, w.ix.dates, w.ix.meat, w.ix.cheese}) {
+            for (int item : {w.ix.bread, w.ix.dates, w.ix.meat, w.ix.cheese, w.ix.samn}) {
                 if (p.hunger >= 78 || tried >= order_cap) break;
                 ++tried;
                 const ItemDef& d = w.data.items[static_cast<size_t>(item)];

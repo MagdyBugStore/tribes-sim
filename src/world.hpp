@@ -73,6 +73,7 @@ struct Field {
     bool growing = false;
     int sown_day = -1;
     int harvests = 0;
+    double last_yield_ratio = -1;   // last harvest vs the nominal yield (<0: none yet); drives the viewer's dry/failed look
     std::vector<double> stock;      // the standing crop (wheat) once ripe
 };
 

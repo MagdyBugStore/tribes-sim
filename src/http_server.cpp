@@ -225,7 +225,7 @@ HttpResponse handle_request(World& w, const HttpRequest& req,
         r.body = json_market(take_snapshot(w));
     } else if (path == "/api/levels") {
         // Live fill levels for the viewer: each well's cistern (liters and
-        // the daily recharge) and the Bayt al-Mal granary's food stock (kg).
+        // the daily recharge) and the Bayt al-Mal granary's food stock (kg), and each field's growth state.
         std::lock_guard<std::mutex> g(w.lock);
         std::ostringstream o;
         o << "{\"day\":" << w.tick << ",\"wells\":[";
@@ -241,7 +241,15 @@ HttpResponse handle_request(World& w, const HttpRequest& req,
         int alive = 0;
         for (auto& p : w.people) if (p.alive) ++alive;
         o << "],\"granary\":{\"food_kg\":" << static_cast<long long>(food)
-          << ",\"population\":" << alive << "}}";
+          << ",\"population\":" << alive << "},\"fields\":[";
+        for (size_t i = 0; i < w.fields.size(); ++i) {
+            const Field& f = w.fields[i];
+            if (i) o << ",";
+            o << "{\"id\":" << f.id << ",\"growing\":" << (f.growing ? "true" : "false")
+              << ",\"sown_day\":" << f.sown_day << ",\"harvests\":" << f.harvests
+              << ",\"last_yield_ratio\":" << f.last_yield_ratio << "}";
+        }
+        o << "]}";
         r.body = o.str();
     } else if (path == "/api/herds") {
         r.body = json_herds(take_snapshot(w));

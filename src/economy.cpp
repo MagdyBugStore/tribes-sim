@@ -232,6 +232,7 @@ void fields_daily(World& w) {
         stock_create(w, h_person(f.owner), w.ix.wheat, kg, "harvest");
         f.growing = false;
         f.harvests++;
+        f.last_yield_ratio = f.yield_kg_ha > 0 ? kg / (f.ha * f.yield_kg_ha) : 0;
         // Keep seed and the family's own bread grain, sell the rest.
         double keep = 60.0 * f.ha + 250.0;
         double sell = std::max(

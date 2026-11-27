@@ -124,9 +124,15 @@ bool origin_ok(const HttpRequest& r) {
 
 }  // namespace
 
-int resolve_static(const std::string& web_root, const std::string& url_path,
+int resolve_static(const std::string& web_root_in, const std::string& url_path,
                    std::string* out) {
     std::string p = url_decode(url_path);
+    // /web3d/... is the 3D viewer next to the 2D one: the sibling directory of the web root.
+    std::string web_root = web_root_in;
+    if (p.compare(0, 7, "/web3d/") == 0 && p.find("..") == std::string::npos) {
+        web_root = web_root_in + "/../web3d";
+        p = p.substr(6);
+    }
     if (p.find('\0') != std::string::npos) return 403;
     if (p.empty() || p[0] != '/') return 403;
     // Reject any ".." component outright, and backslashes.

@@ -382,7 +382,7 @@ The viewer in `web/` is fully Arabic with a right-to-left layout (`<html lang="a
 
 ## 3D viewer (work in progress)
 
-`web3d/` holds the 3D stack decision (`docs/ADR-0001-3d-stack.md`). To open the hello page:
+`web3d/` holds the 3D stack decision (`docs/ADR-0001-3d-stack.md`). From the main page (`./tribes --serve 8080`, then http://127.0.0.1:8080/) the yellow "3D" button opens the 3D viewer at `/web3d/world.html` (the server serves `web3d/` next to `web/`). To open the hello page:
 `python3 -m http.server 8000 --directory web3d`, then http://localhost:8000/hello.html. The benchmark is
 `web3d/proto/three-bench.html?mode=instanced&n=1000`.
 

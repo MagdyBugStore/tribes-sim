@@ -8,6 +8,7 @@ import * as B from './buildings.js';
 import { SHAPES, SIZE } from './animals.js';
 import { bake, decimate, vatMaterial, uTime as vatTime } from './vat.js';
 import { CLIPS, stateFor } from './anim_map.js';
+import { buildTerrain } from './terrain_lib.js';
 const q = new URLSearchParams(location.search); const PBOOST = q.get('pboost') !== '0', PBOOST_D = +(q.get('pboostd') ?? 45), PBOOST_MAX = +(q.get('pboostmax') ?? 7); /* تكبير الناس عن بعد كي يبقوا مرئيين (تضخيم بصري، مش مقياس حقيقي) */ const LANG = q.get('lang') === 'en' ? 'en' : 'ar', API = q.get('api') || '', replay = q.get('replay');
 // data source: live API, or a JSON-lines replay file: {"type":"map","data":{..}} / {"type":"people","data":{..}} per line
 async function load() {
@@ -24,6 +25,7 @@ const sc = new THREE.Scene(); const night = q.get('night') === '1'; const hour =
 const dark = hour < 5 || hour >= 19; sc.background = new THREE.Color(dark ? 0x101830 : hour < 7 ? 0xf0b080 : 0xe6dcc3);
 sc.add(new THREE.HemisphereLight(0xffffff, 0x886644, dark ? 0.35 : 1.1)); const dl = new THREE.DirectionalLight(0xffeecc, dark ? 0.2 : 1.2); dl.position.set(50, 100, 50); sc.add(dl);
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(map.width * S, map.height * S), new THREE.MeshLambertMaterial({ map: B.tex('sand_light', 40) })); ground.rotation.x = -Math.PI / 2; ground.position.set(map.width * S / 2, 0, map.height * S / 2); sc.add(ground);
+if (q.get('terrain') !== '0') try { const T = buildTerrain(map, S, B.tex('sand_light', 1)); sc.remove(ground); sc.add(T.mesh); window.__terrain = { maxH: T.maxH }; } catch (e) { console.error('terrain failed, flat ground kept', e); }
 const P = (x, y) => [x * S, y * S];
 // road
 { const pts = map.road.map(p => new THREE.Vector3(p[0] * S, 0.1, p[1] * S)); const curve = new THREE.CatmullRomCurve3(pts); const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 80, 0.6, 3), new THREE.MeshLambertMaterial({ color: 0x8a7a5a })); tube.scale.y = 0.1; sc.add(tube); }

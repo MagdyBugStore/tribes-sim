@@ -8,7 +8,7 @@ import * as B from './buildings.js';
 import { SHAPES, SIZE } from './animals.js';
 import { bake, decimate, vatMaterial, uTime as vatTime } from './vat.js';
 import { CLIPS, stateFor } from './anim_map.js';
-const q = new URLSearchParams(location.search); const LANG = q.get('lang') === 'en' ? 'en' : 'ar', API = q.get('api') || '', replay = q.get('replay');
+const q = new URLSearchParams(location.search); const PBOOST = q.get('pboost') !== '0', PBOOST_D = +(q.get('pboostd') ?? 45), PBOOST_MAX = +(q.get('pboostmax') ?? 7); /* تكبير الناس عن بعد كي يبقوا مرئيين (تضخيم بصري، مش مقياس حقيقي) */ const LANG = q.get('lang') === 'en' ? 'en' : 'ar', API = q.get('api') || '', replay = q.get('replay');
 // data source: live API, or a JSON-lines replay file: {"type":"map","data":{..}} / {"type":"people","data":{..}} per line
 async function load() {
   if (replay) { const lines = (await (await fetch(replay)).text()).trim().split('\n').map(JSON.parse); return { map: lines.find(l => l.type === 'map').data, peopleFrames: lines.filter(l => l.type === 'people').map(l => l.data), sch: (lines.find(l => l.type === 'schedules') || {}).data }; }
@@ -95,9 +95,9 @@ function renderPeople() { if (!fbxOK) return; const now = performance.now(), dt 
   const h0 = Math.floor(simHour) % 24;
   SP.forEach((p, i) => { dots.getMatrixAt(i, _m); _m.decompose(_p, _q, _s); if (_s.x < 0.01) return; const P = pst[i], moving = !!P.moving;
     const act = sch.acts[ALPHA.indexOf(p[7][h0])]; let st = moving ? (/carry|fetch|haul|deliver|travel|caravan/.test(act[0]) ? 'carry' : 'walk') : stateFor(act[0]); if (st === 'hidden') st = 'idle';
-    const k = PK[p[2] === 1 ? 1 : 0], L = (Math.hypot(_p.x - cam.position.x, _p.z - cam.position.z) > 60 + cam.position.y * 0.5) ? k.far : k.near, j = L.im.count++;
+    const k = PK[p[2] === 1 ? 1 : 0], dc = Math.hypot(_p.x - cam.position.x, _p.y - cam.position.y, _p.z - cam.position.z), L = (Math.hypot(_p.x - cam.position.x, _p.z - cam.position.z) > 60 + cam.position.y * 0.5) ? k.far : k.near, j = L.im.count++;
     const ci = clipOf(k, st); if (P.ci < 0) { P.ci = P.pci = ci; } else if (ci !== P.ci) { P.pci = P.ci; P.ci = ci; P.bl = 1; } if (P.bl > 0) P.bl = Math.max(0, P.bl - dt / 0.3);
-    const age = p[3], sz = age < 16 ? 0.62 : age >= 60 ? 0.94 : 1, sc2 = k.b.scale * sz; _q.setFromAxisAngle(_up, P.ang); _p.set(_p.x, -k.b.y0 * sc2, _p.z); _s.set(sc2, sc2, sc2); _m.compose(_p, _q, _s); L.im.setMatrixAt(j, _m);
+    const age = p[3], sz = age < 16 ? 0.62 : age >= 60 ? 0.94 : 1, boost = PBOOST ? Math.min(PBOOST_MAX, Math.max(1, dc / PBOOST_D)) : 1, sc2 = k.b.scale * sz * boost; _q.setFromAxisAngle(_up, P.ang); _p.set(_p.x, -k.b.y0 * sc2, _p.z); _s.set(sc2, sc2, sc2); _m.compose(_p, _q, _s); L.im.setMatrixAt(j, _m);
     L.im.instanceColor.setXYZ(j, TRIB[p[1] ? 1 : 0].r, TRIB[p[1] ? 1 : 0].g, TRIB[p[1] ? 1 : 0].b);
     L.a1.setXYZW(j, ci * 12, 0, 1 / k.b.dur[ci], P.ph); L.a2.setXYZW(j, P.pci * 12, 1 / k.b.dur[P.pci], P.ph, P.bl); });
   for (const k of PK) for (const L of [k.near, k.far]) { L.im.instanceMatrix.needsUpdate = true; L.im.instanceColor.needsUpdate = true; L.a1.needsUpdate = true; L.a2.needsUpdate = true; } window.__people3d = { near: PK.map(k => k.near.im.count), far: PK.map(k => k.far.im.count) }; }
@@ -123,6 +123,7 @@ cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, p
 cv.addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY; moved += Math.abs(dx) + Math.abs(dy);
   if (drag.pan) { const k = dist * 0.002; tgt.x -= (dx * Math.cos(th) + dy * Math.sin(th)) * k; tgt.z -= (-dx * Math.sin(th) + dy * Math.cos(th)) * k; } else { th -= dx * 0.005; ph -= dy * 0.005; } place(); });
 cv.addEventListener('pointerup', e => { drag = null; if (moved < 4) pick(e); });
+cv.addEventListener('dblclick', e => { const nd = new THREE.Vector2(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1), rc = new THREE.Raycaster(); rc.setFromCamera(nd, cam); const hit = new THREE.Vector3(); if (rc.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit)) { tgt.set(hit.x, 0, hit.z); dist = Math.max(14, dist * 0.45); place(); } }); // دبل كليك: تركيز الكاميرا وتقريبها
 cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('wheel', e => { dist *= Math.exp(e.deltaY * 0.001); place(); e.preventDefault(); }, { passive: false });
 addEventListener('keydown', e => keys[e.key.toLowerCase()] = 1); addEventListener('keyup', e => keys[e.key.toLowerCase()] = 0);
